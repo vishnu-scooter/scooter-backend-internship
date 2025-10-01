@@ -1,49 +1,41 @@
-name: Trigger auto deployment for scooter-backend-prod
+name: Trigger auto deployment for scooter-backend
 
-# When this action will be executed
 on:
-  # Automatically trigger it when detected changes in repo
   push:
-    branches: 
-      [ main ]
+    branches:
+      - main
     paths:
-    - '**'
-    - '.github/workflows/scooter-backend-prod-AutoDeployTrigger-0c2dca18-aefa-432e-8e85-cc81aa62918d.yml'
-
-  # Allow manual trigger 
-  workflow_dispatch:      
+      - '**'
+      - '.github/workflows/scooter-backend-prod-AutoDeployTrigger.yml'
+  workflow_dispatch:
 
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
-    permissions: 
-      id-token: write #This is required for requesting the OIDC JWT Token
-      contents: read #Required when GH token is used to authenticate with private repo
+
+    permissions:
+      id-token: write
+      contents: read
 
     steps:
       - name: Checkout to the branch
         uses: actions/checkout@v2
 
       - name: Azure Login
-        uses: azure/login@v2
+        uses: azure/login@v1
         with:
-          client-id: ${{ secrets.SCOOTERBACKENDPROD_AZURE_CLIENT_ID }}
-          tenant-id: ${{ secrets.SCOOTERBACKENDPROD_AZURE_TENANT_ID }}
-          subscription-id: ${{ secrets.SCOOTERBACKENDPROD_AZURE_SUBSCRIPTION_ID }}
+          client-id: 33250060-cb57-4c41-8225-b9aa5a6c43f3
+          tenant-id: dcaed772-24b2-4dc0-87f0-960d428883bc
+          subscription-id: b4660af1-fe5c-407f-b61f-2797c60af918
 
       - name: Build and push container image to registry
         uses: azure/container-apps-deploy-action@v2
         with:
           appSourcePath: ${{ github.workspace }}
-          _dockerfilePathKey_: _dockerfilePath_
-          _targetLabelKey_: _targetLabel_
-          registryUrl: 
-          registryUsername: ${{ secrets.SCOOTERBACKENDPROD_REGISTRY_USERNAME }}
-          registryPassword: ${{ secrets.SCOOTERBACKENDPROD_REGISTRY_PASSWORD }}
+          dockerfilePath: Dockerfile
+          registryUrl: scooterbackendprod.azurecr.io
+          registryUsername: scooterbackendprod
+          registryPassword: 4hMRmANTmkfKiFd7TOlHI/c+vCH151IsyLtYug7208+ACRDnbkYk
           containerAppName: scooter-backend-prod
           resourceGroup: scooter_production_rg
-          imageToBuild: default/[parameters('containerAppName')]:${{ github.sha }}
-          _buildArgumentsKey_: |
-            _buildArgumentsValues_
-
-
+          imageToBuild: scooterbackendprod.azurecr.io/scooter-backend-prod:${{ github.sha }}
