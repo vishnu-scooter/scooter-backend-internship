@@ -1,0 +1,34 @@
+2025-10-06 13:55:36,738 - __main__ - INFO - application startup good
+2025-10-06 13:55:42,689 - __main__ - INFO - Starting FastAPI application
+2025-10-06 17:24:42,782 - __main__ - INFO - application startup good
+2025-10-06 17:24:48,407 - __main__ - INFO - Starting FastAPI application
+2025-10-06 17:30:39,941 - __main__ - INFO - LLM response: {'choices': [{'content_filter_results': {'hate': {'filtered': False, 'severity': 'safe'}, 'protected_material_code': {'filtered': False, 'detected': False}, 'protected_material_text': {'filtered': False, 'detected': False}, 'self_harm': {'filtered': False, 'severity': 'safe'}, 'sexual': {'filtered': False, 'severity': 'safe'}, 'violence': {'filtered': False, 'severity': 'safe'}}, 'finish_reason': 'stop', 'index': 0, 'logprobs': None, 'message': {'annotations': [], 'content': 'NO', 'refusal': None, 'role': 'assistant'}}], 'created': 1759752040, 'id': 'chatcmpl-CNeBMkRHi4DmZTh1bfxzArCbWAI4y', 'model': 'gpt-4o-mini-2024-07-18', 'object': 'chat.completion', 'prompt_filter_results': [{'prompt_index': 0, 'content_filter_results': {'hate': {'filtered': False, 'severity': 'safe'}, 'jailbreak': {'filtered': False, 'detected': False}, 'self_harm': {'filtered': False, 'severity': 'safe'}, 'sexual': {'filtered': False, 'severity': 'safe'}, 'violence': {'filtered': False, 'severity': 'safe'}}}], 'system_fingerprint': 'fp_efad92c60b', 'usage': {'completion_tokens': 2, 'completion_tokens_details': {'accepted_prediction_tokens': 0, 'audio_tokens': 0, 'reasoning_tokens': 0, 'rejected_prediction_tokens': 0}, 'prompt_tokens': 219, 'prompt_tokens_details': {'audio_tokens': 0, 'cached_tokens': 0}, 'total_tokens': 221}}
+2025-10-06 17:31:06,513 - __main__ - INFO - LLM response: {'choices': [{'content_filter_results': {'hate': {'filtered': False, 'severity': 'safe'}, 'protected_material_code': {'filtered': False, 'detected': False}, 'protected_material_text': {'filtered': False, 'detected': False}, 'self_harm': {'filtered': False, 'severity': 'safe'}, 'sexual': {'filtered': False, 'severity': 'safe'}, 'violence': {'filtered': False, 'severity': 'safe'}}, 'finish_reason': 'stop', 'index': 0, 'logprobs': None, 'message': {'annotations': [], 'content': 'YES', 'refusal': None, 'role': 'assistant'}}], 'created': 1759752067, 'id': 'chatcmpl-CNeBncrFJ8uB6znhj00Wm4z99WgNi', 'model': 'gpt-4o-mini-2024-07-18', 'object': 'chat.completion', 'prompt_filter_results': [{'prompt_index': 0, 'content_filter_results': {'hate': {'filtered': False, 'severity': 'safe'}, 'jailbreak': {'filtered': False, 'detected': False}, 'self_harm': {'filtered': False, 'severity': 'safe'}, 'sexual': {'filtered': False, 'severity': 'safe'}, 'violence': {'filtered': False, 'severity': 'safe'}}}], 'system_fingerprint': 'fp_efad92c60b', 'usage': {'completion_tokens': 2, 'completion_tokens_details': {'accepted_prediction_tokens': 0, 'audio_tokens': 0, 'reasoning_tokens': 0, 'rejected_prediction_tokens': 0}, 'prompt_tokens': 220, 'prompt_tokens_details': {'audio_tokens': 0, 'cached_tokens': 0}, 'total_tokens': 222}}
+2025-10-06 17:32:18,327 - __main__ - INFO - Evaluating answer for question: Just went through your resume and saw that you improved student algorithmic thinking by 35% as a men...
+2025-10-06 17:32:27,202 - __main__ - INFO - Successfully evaluated answer
+2025-10-06 17:32:27,203 - __main__ - INFO - Evaluated Q1
+2025-10-06 17:32:27,203 - __main__ - INFO - Evaluating answer for question: I see you've been a Fullstack Developer at Ripple Nexus - managing both frontend and backend integra...
+2025-10-06 17:32:29,857 - __main__ - INFO - Successfully evaluated answer
+2025-10-06 17:32:29,858 - __main__ - INFO - Evaluated Q2
+2025-10-06 17:32:29,858 - __main__ - INFO - Evaluating answer for question: If you had to sum it up, what’s the key to winning over that kind of buyer or handling their objecti...
+2025-10-06 17:32:32,888 - __main__ - INFO - Successfully evaluated answer
+2025-10-06 17:32:32,889 - __main__ - INFO - Evaluating answer for question: Given your background in Fullstack Development and mentorship, I'm curious - what's drawing you to t...
+2025-10-06 17:32:36,750 - __main__ - INFO - Successfully evaluated answer
+2025-10-06 17:32:36,751 - __main__ - INFO - Evaluated Q3
+2025-10-06 17:32:40,565 - __main__ - INFO - Audio interview evaluated: {'status': True, 'message': 'Audio interview evaluated successfully.', 'qualified_for_video_round': True}
+2025-10-06 18:17:44,970 - __main__ - INFO - application startup good
+2025-10-06 18:17:50,381 - __main__ - INFO - Starting FastAPI application
+2025-10-06 18:34:47,963 - __main__ - INFO - application startup good
+2025-10-06 18:34:53,407 - __main__ - INFO - Starting FastAPI application
+2025-10-06 19:19:05,068 - __main__ - INFO - application startup good
+2025-10-06 19:19:10,772 - __main__ - INFO - Starting FastAPI application
+2025-10-06 19:20:21,680 - __main__ - INFO - Fetching all NEW FORMAT jobs (page 1, size 5)
+2025-10-06 19:20:21,748 - __main__ - INFO - Found 5 jobs after pagination
+2025-10-06 19:20:33,036 - __main__ - INFO - Fetching all NEW FORMAT jobs (page 5, size 5)
+2025-10-06 19:20:33,106 - __main__ - INFO - Found 4 jobs after pagination
+2025-10-06 19:21:20,174 - __main__ - INFO - application startup good
+2025-10-06 19:21:33,874 - __main__ - INFO - Starting FastAPI application
+2025-10-06 19:38:12,771 - __main__ - INFO - application startup good
+2025-10-06 19:38:18,185 - __main__ - INFO - Starting FastAPI application
+2025-10-06 19:40:29,462 - __main__ - INFO - application startup good
+2025-10-06 19:40:34,859 - __main__ - INFO - Starting FastAPI application
