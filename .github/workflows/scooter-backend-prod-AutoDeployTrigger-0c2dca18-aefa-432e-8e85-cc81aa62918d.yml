@@ -1,0 +1,41 @@
+name: Trigger auto deployment for scooter-backend
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - '**'
+      - '.github/workflows/scooter-backend-prod-AutoDeployTrigger.yml'
+  workflow_dispatch:
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - name: Checkout to the branch
+        uses: actions/checkout@v2
+
+      - name: Azure Login
+        uses: azure/login@v1
+        with:
+          client-id: 33250060-cb57-4c41-8225-b9aa5a6c43f3
+          tenant-id: dcaed772-24b2-4dc0-87f0-960d428883bc
+          subscription-id: b4660af1-fe5c-407f-b61f-2797c60af918
+
+      - name: Build and push container image to registry
+        uses: azure/container-apps-deploy-action@v2
+        with:
+          appSourcePath: ${{ github.workspace }}
+          dockerfilePath: Dockerfile
+          registryUrl: scooterbackendprod.azurecr.io
+          registryUsername: scooterbackendprod
+          registryPassword: 4hMRmANTmkfKiFd7TOlHI/c+vCH151IsyLtYug7208+ACRDnbkYk
+          containerAppName: scooter-backend-prod
+          resourceGroup: scooter_production_rg
+          imageToBuild: scooterbackendprod.azurecr.io/scooter-backend-prod:${{ github.sha }}
