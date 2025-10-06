@@ -5867,16 +5867,10 @@ async def update_application_status(request: CallForInterviewRequest):
         logger.error(error_msg, exc_info=True)
         raise HTTPException(status_code=500, detail=error_msg)
 
-############################################################################################
-# openai_client = AzureOpenAI(
-#     api_key="9gE6yVCE4nGisb0Zf8yp15DMdl9qpN56z7bJ8AntLqOlX3TfP3EPJQQJ99BAACYeBjFXJ3w3AAABACOGQnpW",
-#     azure_endpoint="https://imaigen-college-openai-service.openai.azure.com",
-#     api_version="2024-08-01-preview",
-#     azure_deployment="gpt-4o-mini"
-# )
-search_service_name = "scooter-knowledge"
-admin_key = "yVz6bNG0y8ufcX6AN4ze6cwWz9lBA7MmgXqufcYGulAzSeDqNwDN"
-index_name = "job-index"
+
+search_service_name = os.getenv("AZURE_SEARCH_SERVICE_NAME", "scooty-search-service")
+admin_key = os.getenv("AZURE_SEARCH_ADMIN_KEY", "your-admin-key")
+index_name = os.getenv("AZURE_SEARCH_INDEX_NAME", "jobs-index")
 
 search_client = SearchClient(
     endpoint=f"https://{search_service_name}.search.windows.net",
@@ -9041,11 +9035,27 @@ async def conversational_interview(
         # Check candidate matches token
         if user_profile.get("user_id") != candidate_user_id:
             raise HTTPException(status_code=403, detail="Unauthorized access to this application")
-
         job_id = user_profile.get("job_id")
         if not job_id:
-            raise HTTPException(status_code=400, detail="Job ID not found in resume profile")
-
+            return JSONResponse(
+            status_code=200,
+            content={"status": False, "message": "Job ID not found in application"}
+        )
+        invite_status= user_profile.get("video_email_sent", False)
+        logger.info(f"Video interview invite status: {invite_status}")
+        if not invite_status:
+            return JSONResponse(
+            status_code=200,
+            content={"status": False, "message": "not invited for video interview"}
+        )
+        if user_profile.get("video_interview_start", False):
+            return JSONResponse(
+            status_code=200,
+            content={"status": False, "message": "Video interview already started"}
+        )
+        
+        
+        
         job_config = get_job_config_by_job_id(job_id)
         if not job_config:
             job_id="68dbb0e6e07e4078863fcf7b"
@@ -9078,7 +9088,7 @@ async def conversational_interview(
         if not interview_questions:
             raise HTTPException(status_code=500, detail="No questions configured for this job ID.")
         reset_count = user_profile.get("video_interview_reset_count", 0)
-        processed_video_url=f'https://scootervideoconsumption.blob.core.windows.net/scooter-processed-videos/{application_id}_video_{reset_count}_master.m3u8'
+        processed_video_url=f'https://scooterdata.blob.core.windows.net/scooter-processed-videos/{application_id}_video_{reset_count}_master.m3u8'
         first_question = interview_questions[0]
         await collection.update_one(
             {"_id": ObjectId(session_id)},
@@ -9088,11 +9098,12 @@ async def conversational_interview(
             {"_id": ObjectId(application_id)},
             {"$set": {"video_interview_start": True, "processed_video_url": processed_video_url}}
         )
-
+        reset_count= user_profile.get("video_interview_reset_count", 0)
         return {
             "session_id": session_id,
             "question": first_question["question"],
-            "step": "question"
+            "step": "question",
+            "reset_count": reset_count
         }
 
     # --- Subsequent calls: session_id + user_answer ---
