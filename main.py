@@ -7541,6 +7541,7 @@ async def get_my_job_candidates(
                     "audio_interview_attended": bool(profile.get("audio_url")),
                     "video_email_sent": profile.get("video_email_sent", False),
                     "video_interview_url": profile.get("video_url"),
+                    "processed_video_url": profile.get("processed_video_url",""),
                     "audio_interview_url": profile.get("audio_url"),
                     "resume_url_from_user_account": user.get("resume_url")
                 }
