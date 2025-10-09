@@ -10292,7 +10292,7 @@ async def job_status(
         if not job:
             return JSONResponse(
                 status_code=404,
-                content={"status": False, "message": "Job not found or unauthorized"}
+                content={"status": False, "message": "Job role not found or unauthorized"}
             )
 
         # 4️⃣ Update job status
