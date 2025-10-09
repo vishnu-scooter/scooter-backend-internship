@@ -1,43 +1,14 @@
-# import sib_api_v3_sdk
-# from sib_api_v3_sdk.rest import ApiException
-
-# # Configure API key authorization
-# configuration = sib_api_v3_sdk.Configuration()
-# configuration.api_key['api-key'] = "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"
-
-# # Create an instance of the API class
-# api_instance = sib_api_v3_sdk.TransactionalEmailsApi(sib_api_v3_sdk.ApiClient(configuration))
-
-# # Build the email
-# send_smtp_email = sib_api_v3_sdk.SendSmtpEmail(
-#     to=[
-#         {"email": "vishnu@thescooter.ai", "name": "Vishnu"},
-#         {"email": "ketaki@thescooter.ai", "name": "Ketaki"}
-#     ],
-#     sender={"email": "no-reply@thescooter.ai", "name": "test1"},
-#     subject="test notification for audio remind later",
-#     html_content="<html><body><h1>below isn the sample email when a candidate is to be reminded for audio later</h1><p>dear support team candidate {name} has requested them to be reminded at {datetime} to take thei audio round.</p></body></html>"
-# )
-
-# try:
-#     # Send email
-#     response = api_instance.send_transac_email(send_smtp_email)
-#     print("Email sent successfully:", response)
-# except ApiException as e:
-#     print("Exception when sending email:", e)
-
-
-
 import sib_api_v3_sdk
 from sib_api_v3_sdk.rest import ApiException
-
+import os
+from dotenv import load_dotenv
 def send_remind_later_email(candidate_name: str, remind_at_str: str, candidate_email: str, candidate_phone: str):
     """
     Sends a transactional email to the support team when a candidate
     requests to be reminded later for their audio round.
     """
     configuration = sib_api_v3_sdk.Configuration()
-    configuration.api_key['api-key'] = "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"
+    configuration.api_key['api-key'] = os.getenv("BREVO_API_KEY")
 
     api_instance = sib_api_v3_sdk.TransactionalEmailsApi(sib_api_v3_sdk.ApiClient(configuration))
 
@@ -62,6 +33,63 @@ def send_remind_later_email(candidate_name: str, remind_at_str: str, candidate_e
         </body>
         </html>
         """
+    )
+
+    try:
+        response = api_instance.send_transac_email(send_smtp_email)
+       
+    except ApiException as e:
+        print("Exception when sending email:", e)
+       
+async def send_password_reset_email(user_email: str, otp:str, user_name: str):
+    """
+    Sends a password reset email to the user.
+    """
+    configuration = sib_api_v3_sdk.Configuration()
+    configuration.api_key['api-key'] = os.getenv("BREVO_API_KEY")
+
+    api_instance = sib_api_v3_sdk.TransactionalEmailsApi(sib_api_v3_sdk.ApiClient(configuration))
+
+    send_smtp_email = sib_api_v3_sdk.SendSmtpEmail(
+        to=[
+            {"email": user_email, "name": user_name}, 
+        ],
+        sender={"email": "no-reply@thescooter.ai", "name": "Scooter"},
+        subject="Your Secret OTP Has Arrived!",
+        html_content=f"""
+<html>
+  <body style="font-family: Arial, sans-serif; background-color: #ffffff; padding: 20px; margin: 0;">
+    <div style="max-width: 600px; margin: auto; border: 1px solid #e0e0e0; border-radius: 8px; padding: 25px;">
+      <h2 style="color: #333;">Hellooo there!</h2>
+      <p style="font-size: 16px; color: #555;">
+        We just sent a super secret code to your inbox (okay, it's not that secret, but it's yours and only yours!🎉)
+      </p>
+      <p style="font-size: 18px; color: #222; font-weight: bold; margin-top: 20px;">
+        Your One-Time Password:
+      </p>
+      <h1 style="color: #0078D7; font-size: 32px; margin: 10px 0;">{otp}</h1>
+      <p style="font-size: 16px; color: #555;">
+        Valid for the next <strong>10 minutes</strong> ⏰.
+      </p>
+      <hr style="margin: 25px 0; border: 0; border-top: 1px solid #e0e0e0;" />
+      <h3 style="color: #333;">What now?</h3>
+      <ol style="font-size: 16px; color: #555; line-height: 1.6;">
+        <li>Head back to the password reset page</li>
+        <li>Enter this code</li>
+        <li>Create a new, memorable password (but not "password123", please!🙈)</li>
+      </ol>
+      <p style="font-size: 16px; color: #555; margin-top: 30px;">
+        Cheers,<br />
+        <strong>Team Scooter</strong>
+      </p>
+      <p style="font-size: 13px; color: #777; margin-top: 20px;">
+        PS: This is an automated email. We'd love to chat, but our robots are a bit shy about replying. 
+        For real human conversation, reach us at <a href="mailto:support@thescooter.ai" style="color: #0078D7;">support@thescooter.ai</a>.
+      </p>
+    </div>
+  </body>
+</html>
+"""
     )
 
     try:

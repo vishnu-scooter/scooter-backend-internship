@@ -5225,8 +5225,10 @@ async def get_all_jobs(
 async def get_job_candidates(
     job_id: str,
     page: int = Query(1, ge=1, description="Page number"),
+    authorization: str = Header(...),
     page_size: int = Query(10, ge=1, le=100, description="Number of items per page"),
     audio_attended: Optional[bool] = Query(None, description="Filter by audio interview status"),
+    seen: bool | None = None,
     video_attended: Optional[bool] = Query(None, description="Filter by video upload status"),
     video_interview_sent: Optional[bool] = Query(None, description="Filter by video interview sent status"),
     application_status: Optional[str] = Query(None, description="Filter by application status"),
@@ -5237,6 +5239,19 @@ async def get_job_candidates(
     Get candidates for a specific job role with optional filters.
     """
     try:
+        # --- Verify access token ---
+        if not authorization.startswith("Bearer "):
+            return JSONResponse(status_code=401, content={"status": False, "message": "Invalid authorization header"})
+        token = authorization.split(" ")[1]
+
+        try:
+            payload = verify_access_token(token)
+            admin_id = payload.get("sub")
+            role = payload.get("role")
+            if not admin_id or role != "superadmin":
+                return JSONResponse(status_code=403, content={"status": False, "message": "Unauthorized"})
+        except Exception:
+            return JSONResponse(status_code=401, content={"status": False, "message": "Invalid or expired token"})
         # Validate job role exists
         job_collection = db["job_roles"]
         job = await job_collection.find_one({"_id": ObjectId(job_id)})
@@ -5246,243 +5261,210 @@ async def get_job_candidates(
         #     raise HTTPException(status_code=400, detail="Inactive job role")
         
         # Get all profiles for this job role
+        # --- Build filters ---
         profile_collection = db["resume_profiles"]
-        interview_collection = db["interview_sessions"]
-        sales_collection = db["sales_scenarios"]
-        audio_collection= db["audio_interview_results"]
-        audio_proctoring_collection = db["audio_proctoring_logs"]
-        video_proctoring_collection = db["video_proctoring_logs"]
-        
-        # Build filter conditions
         filter_conditions = {"job_id": job_id}
-        
+
         if audio_attended is not None:
-            if audio_attended:
-                filter_conditions["audio_interview"] = True
+            filter_conditions["audio_interview"] = True if audio_attended else {"$ne": True}
+
+        if seen is not None:
+            if seen:
+                filter_conditions["application_status"] = {"$exists": True, "$type": "string", "$ne": ""}
             else:
                 filter_conditions["$or"] = [
-                    {"audio_interview": False},
-                    {"audio_interview": {"$exists": False}}
+                    {"application_status": {"$exists": False}},
+                    {"application_status": None},
+                    {"application_status": ""}
                 ]
-        
+
         if application_status is not None:
             if application_status == "SendVideoLink":
                 filter_conditions["$or"] = [
-                    { "video_email_sent": True },
-                    { "application_status": "SendVideoLink" }
+                    {"video_email_sent": True},
+                    {"application_status": "SendVideoLink"}
                 ]
             else:
                 filter_conditions["application_status"] = application_status
+
         if video_attended is not None:
-            if video_attended:
-                filter_conditions["video_interview_start"] = True
-            else:
-                filter_conditions["$or"] = [
-                    {"video_interview_start": False},
-                    {"video_interview_start": {"$exists": False}}
-                ]
+            filter_conditions["video_interview_start"] = True if video_attended else {"$ne": True}
+
         if video_interview_sent is not None:
-            if video_interview_sent:
-                filter_conditions["video_email_sent"] = True
-            else:
-                filter_conditions["$or"] = [
-                    {"video_email_sent": False},
-                    {"video_email_sent": {"$exists": False}}
-                ]
+            filter_conditions["video_email_sent"] = True if video_interview_sent else {"$ne": True}
 
         if shortlisted is not None:
-            if shortlisted:
-                filter_conditions["final_shortlist"] = True
-            else:
-                filter_conditions["$or"] = [
-                    {"final_shortlist": False},
-                    {"final_shortlist": {"$exists": False}}
-                ]
-        if call_for_interview is not None:
-            if call_for_interview:
-                filter_conditions["call_for_interview"] = True
-            else:
-                filter_conditions["$or"] = [
-                    {"call_for_interview": False},
-                    {"call_for_interview": {"$exists": False}}
-                ]
-        # Log the filter conditions for debugging
-        logger.info(f"Filter conditions: {filter_conditions}")
-        
-        # Get total count of candidates with filters
-        total_candidates = await profile_collection.count_documents(filter_conditions)
-        audio_attended_count = await profile_collection.count_documents({
-            **filter_conditions,
-            "audio_interview": True
-        })
-        # Get video attended count with filters
-        video_attended_count = await profile_collection.count_documents({
-            **filter_conditions,
-            "video_interview_start": True
-        })
-        moved_to_video_round_count = await profile_collection.count_documents({
-    **filter_conditions,
-    "job_id": job_id,
-    "$or": [
-        { "video_email_sent": True },
-        { "application_status": "SendVideoLink" }
-    ]
-})
+            filter_conditions["final_shortlist"] = True if shortlisted else {"$ne": True}
 
-        logger.info(f"Total candidates found: {total_candidates}")
-        
-        # Calculate total pages
+        if call_for_interview is not None:
+            filter_conditions["call_for_interview"] = True if call_for_interview else {"$ne": True}
+
+        # --- Parallel count queries ---
+        count_tasks = [
+            profile_collection.count_documents(filter_conditions),
+            profile_collection.count_documents({**filter_conditions, "audio_interview": True}),
+            profile_collection.count_documents({**filter_conditions, "video_interview_start": True}),
+            profile_collection.count_documents({
+                **filter_conditions,
+                "$or": [{"video_email_sent": True}, {"application_status": "SendVideoLink"}]
+            })
+        ]
+        total_candidates, audio_attended_count, video_attended_count, moved_to_video_round_count = await asyncio.gather(*count_tasks)
+
         total_pages = (total_candidates + page_size - 1) // page_size
-        
-        # Validate page number
         if page > total_pages and total_pages > 0:
             raise HTTPException(status_code=400, detail=f"Page number exceeds total pages ({total_pages})")
-        
-        # Calculate skip value for pagination
+
         skip = (page - 1) * page_size
-        
-        # Find profiles with pagination and filters
+
+        # --- Fetch profiles in bulk ---
         profiles = await profile_collection.find(
-            filter_conditions
+            filter_conditions,
+            {"user_id": 1, "application_status": 1, "final_shortlist": 1, "call_for_interview": 1,
+             "audio_interview": 1, "audio_url": 1, "video_url": 1, "video_email_sent": 1, "created_at": 1,
+             "career_overview": 1}
         ).sort("created_at", -1).skip(skip).limit(page_size).to_list(length=page_size)
-        
-        logger.info(f"Found {len(profiles)} profiles after pagination")
-        
-        # Process each profile to add interview details
+
+        if not profiles:
+            return {
+                "status": True,
+                "message": "No candidates found",
+                "job_details": {"title": job.get("basicInfo", {}).get("jobTitle", "")},
+                "pagination": {"total_candidates": 0, "total_pages": 0},
+                "candidates": []
+            }
+
+        user_ids = [ObjectId(p["user_id"]) for p in profiles if p.get("user_id")]
+        profile_ids = [str(p["_id"]) for p in profiles]
+
+        # --- Prefetch all dependent data concurrently ---
+        user_collection = db["user_accounts"]
+        interview_collection = db["interview_sessions"]
+        sales_collection = db["sales_scenarios"]
+        audio_collection = db["audio_interview_results"]
+        audio_proctoring_collection = db["audio_proctoring_logs"]
+        video_proctoring_collection = db["video_proctoring_logs"]
+
+        user_task = user_collection.find({"_id": {"$in": user_ids}}).to_list(None)
+        interview_task = interview_collection.find({"application_id": {"$in": profile_ids}}).sort("created_at", -1).to_list(None)
+        audio_task = audio_collection.find({"application_id": {"$in": profile_ids}}).sort("created_at", -1).to_list(None)
+        audio_proc_task = audio_proctoring_collection.find({"user_id": {"$in": profile_ids}}).sort("created_at", -1).to_list(None)
+        video_proc_task = video_proctoring_collection.find({"user_id": {"$in": profile_ids}}).sort("created_at", -1).to_list(None)
+        sales_task = sales_collection.find({"user_id": {"$in": profile_ids}}).sort("created_at", -1).to_list(None)
+
+        (
+            users,
+            interviews,
+            audio_interviews,
+            audio_proc,
+            video_proc,
+            sales_scenarios
+        ) = await asyncio.gather(user_task, interview_task, audio_task, audio_proc_task, video_proc_task, sales_task)
+
+        # --- Convert to lookup dicts for O(1) access ---
+        user_map = {str(u["_id"]): u for u in users}
+        interview_map = {i["application_id"]: i for i in interviews}
+        audio_map = {a["application_id"]: a for a in audio_interviews}
+        audio_proc_map = {p["user_id"]: p for p in audio_proc}
+        video_proc_map = {p["user_id"]: p for p in video_proc}
+        sales_map = {s["user_id"]: s for s in sales_scenarios}
+
         candidates = []
+        now = datetime.utcnow()
+
         for profile in profiles:
+            user = user_map.get(str(profile.get("user_id")))
+            if not user:
+                continue
+
+            # --- Compute experience ---
             career_overview = profile.get("career_overview", {})
             company_history = career_overview.get("company_history", [])
-
-            # Sort by latest start_date first
             if company_history:
                 company_history.sort(key=lambda x: x.get("start_date", ""), reverse=True)
-
             total_months = 0
-            now = datetime.utcnow()
-
             for role in company_history:
-                start_date_str = role.get("start_date")
-                end_date_str = role.get("end_date")
-                is_current = role.get("is_current", False)
-
-                # Parse start_date
                 try:
-                    start_date = datetime.strptime(start_date_str, "%Y-%m-%d") if start_date_str else None
-                except ValueError:
-                    start_date = None
+                    start = datetime.strptime(role.get("start_date", ""), "%Y-%m-%d")
+                    if role.get("is_current", False):
+                        total_months += (now.year - start.year) * 12 + (now.month - start.month)
+                    elif role.get("end_date"):
+                        end = datetime.strptime(role["end_date"], "%Y-%m-%d")
+                        total_months += (end.year - start.year) * 12 + (end.month - start.month)
+                except Exception:
+                    continue
+            career_overview["total_years_experience"] = round(total_months / 12, 1)
 
-                # If current, calculate till now
-                if is_current and start_date:
-                    diff = (now.year - start_date.year) * 12 + (now.month - start_date.month)
-                    role["duration_months"] = diff
-                    total_months += diff
-                elif start_date and end_date_str:
-                    # If both dates are present, calculate duration
-                    try:
-                        end_date = datetime.strptime(end_date_str, "%Y-%m-%d")
-                        diff = (end_date.year - start_date.year) * 12 + (end_date.month - start_date.month)
-                        role["duration_months"] = diff
-                        total_months += diff
-                    except ValueError:
-                        pass  # skip if end_date is malformed
-                else:
-                    # Fall back to existing duration if no dates
-                    total_months += role.get("duration_months", 0)
-
-            total_years_experience = round(total_months / 12, 1)
-            career_overview["company_history"] = company_history
-            career_overview["total_years_experience"] = total_years_experience
+            # --- Assemble candidate ---
             candidate = {
-                "profile_id": str(profile["_id"]),
-                "profile_created_at": profile["created_at"].isoformat() if "created_at" in profile else None,
-                "short_summary": profile.get("short_summary", ""),
-                "job_fit_assessment": profile.get("job_fit_assessment", " "),
-                "basic_information": profile.get("basic_information", {}),
+                "application_id": str(profile["_id"]),
+                "profile_created_at": profile.get("created_at").isoformat() if profile.get("created_at") else None,
+                "name": user.get("name", ""),
+                "email": user.get("email", ""),
+                "phone": user.get("phone", ""),
+                "professional_summary": user.get("professional_summary", ""),
+                "basic_information": user.get("basic_information", {}),
+                "career_overview": user.get("career_overview", {}),
+                "role_process_exposure": user.get("role_process_exposure", {}),
+                "sales_context": user.get("sales_context", {}),
+                "tools_platforms": user.get("tools_platforms", {}),
+                "resume_url": user.get("resume_url", None),
                 "application_status": profile.get("application_status", ""),
-                "application_status_reason": profile.get("application_status_reason", ""),
-                "application_status_updated_at": profile.get("application_status_updated_at", None),
                 "final_shortlist": profile.get("final_shortlist", False),
-                "shortlist_status_reason": profile.get("shortlist_status_reason", ""),
                 "call_for_interview": profile.get("call_for_interview", False),
-                "call_for_interview_notes": profile.get("call_for_interview_notes", ""),
-                "career_overview": career_overview,
                 "interview_status": {
                     "audio_interview_passed": profile.get("audio_interview", False),
                     "video_interview_attended": bool(profile.get("video_url")),
                     "audio_interview_attended": bool(profile.get("audio_url")),
                     "video_email_sent": profile.get("video_email_sent", False),
-                    "video_interview_url": profile.get("video_url") if profile.get("video_url") else None,
-                    "audio_interview_url": profile.get("audio_url") if profile.get("audio_url") else None,
-                    "resume_url": profile.get("resume_url") if profile.get("resume_url") else None
+                    "video_interview_url": profile.get("video_url"),
+                    "processed_video_url": profile.get("processed_video_url",""),
+                    "audio_interview_url": profile.get("audio_url"),
+                    "resume_url_from_user_account": user.get("resume_url")
                 }
             }
-            
-            # Get latest interview session
-            interview_session = await interview_collection.find_one(
-                {"user_id": str(profile["_id"])},
-                sort=[("created_at", -1)]
-            )
-            
-            if interview_session:
-                candidate["interview_details"] = {
-                    "session_id": str(interview_session["_id"]),
-                    "created_at": interview_session["created_at"].isoformat(),
-                    "communication_evaluation": interview_session.get("communication_evaluation", {}),
-                    "qa_evaluations": interview_session.get("evaluation", [])
-                }
-            audio_interview_session = await audio_collection.find_one(
-                {"user_id": str(profile["_id"])},
-                sort=[("created_at", -1)]
-            )
-            if audio_interview_session:
-                candidate["audio_interview_details"]= {
-                    "audio_interview_id": str(audio_interview_session["_id"]),
-                    "created_at":audio_interview_session["created_at"].isoformat(),
-                    "qa_evaluations": audio_interview_session.get("qa_evaluations",{}),
-                    "audio_interview_summary": audio_interview_session.get("interview_summary",[])
-                }
-            
-            audio_proctoring= await audio_proctoring_collection.find_one(
-                {"user_id": str(profile["_id"])},
-                sort=[("created_at", -1)]
-                )
-            if audio_proctoring:
-                candidate["audio_proctoring_details"] = serialize_document(dict(audio_proctoring))
 
-            video_proctoring = await video_proctoring_collection.find_one(
-                {"user_id": str(profile["_id"])},
-                sort=[("created_at", -1)]
-            )
-            if video_proctoring:
-                candidate["video_proctoring_details"] = serialize_document(dict(video_proctoring))
-            # Get latest sales scenario session
-            sales_session = await sales_collection.find_one(
-                {"user_id": str(profile["_id"])},
-                sort=[("created_at", -1)]
-            )
-            
-            if sales_session:
-                candidate["sales_scenario_details"] = {
-                    "session_id": str(sales_session["_id"]),
-                    "created_at": sales_session["created_at"].isoformat(),
-                    "sales_conversation_evaluation": sales_session.get("sales_conversation_evaluation", {}),
-                    "responses": sales_session.get("responses", [])
+            if interview_map.get(str(profile["_id"])):
+                i = interview_map[str(profile["_id"])]
+                candidate["interview_details"] = {
+                    "session_id": str(i["_id"]),
+                    "created_at": i["created_at"].isoformat(),
+                    "communication_evaluation": i.get("communication_evaluation", {}),
+                    "key_highlights": i.get("interview_highlights", ""),
+                    "qa_evaluations": i.get("evaluation", [])
                 }
-            
+
+            if audio_map.get(str(profile["_id"])):
+                a = audio_map[str(profile["_id"])]
+                candidate["audio_interview_details"] = {
+                    "audio_interview_id": str(a["_id"]),
+                    "created_at": a["created_at"].isoformat(),
+                    "qa_evaluations": a.get("qa_evaluations", {}),
+                    "audio_interview_summary": a.get("interview_summary", [])
+                }
+
+            if audio_proc_map.get(str(profile["_id"])):
+                candidate["audio_proctoring_details"] = serialize_document(dict(audio_proc_map[str(profile["_id"])]))
+
+            if video_proc_map.get(str(profile["_id"])):
+                candidate["video_proctoring_details"] = serialize_document(dict(video_proc_map[str(profile["_id"])]))
+
+            if sales_map.get(str(profile["_id"])):
+                s = sales_map[str(profile["_id"])]
+                candidate["sales_scenario_details"] = {
+                    "session_id": str(s["_id"]),
+                    "created_at": s["created_at"].isoformat(),
+                    "sales_conversation_evaluation": s.get("sales_conversation_evaluation", {}),
+                    "responses": s.get("responses", [])
+                }
+
             candidates.append(candidate)
-        
-        # Calculate pagination metadata
-        has_next = page < total_pages
-        has_previous = page > 1
-        
-        response = {
+
+        return {
             "status": True,
             "message": "Candidates retrieved successfully",
             "job_details": {
-                "title": job["title"],
-                "description": job["description"],
-                "company_id": job["company_id"],
+                "title": job["basicInfo"]["jobTitle"],
                 "moved_to_video_round_count": moved_to_video_round_count,
                 "audio_attended_count": audio_attended_count,
                 "video_attended_count": video_attended_count,
@@ -5498,21 +5480,18 @@ async def get_job_candidates(
                 "page_size": page_size,
                 "total_candidates": total_candidates,
                 "total_pages": total_pages,
-                "has_next": has_next,
-                "has_previous": has_previous
+                "has_next": page < total_pages,
+                "has_previous": page > 1
             },
             "candidates": candidates
         }
-        
-        logger.info(f"Response prepared with {len(candidates)} candidates")
-        return response
-        
+
     except HTTPException as he:
         raise he
     except Exception as e:
-        error_msg = f"Error retrieving job candidates: {str(e)}"
-        logger.error(error_msg, exc_info=True)
-        raise HTTPException(status_code=500, detail=error_msg)
+        logger.error(f"Error retrieving job candidates: {e}", exc_info=True)
+        return JSONResponse(status_code=500, content={"status": False, "message": str(e)})
+
 
 class CompanyLoginRequest(BaseModel):
     email: str
@@ -8080,6 +8059,99 @@ async def evaluate_audio_interview(application_id: str):
         error_msg = f"Error evaluating audio interview: {str(e)}"
         logger.error(error_msg, exc_info=True)
         raise HTTPException(status_code=500, detail=error_msg)
+    
+@app.post("/my-manager-profile/")
+async def get_manager_profile(authorization: str = Header(...)):
+    try:
+        try:
+            current_user = await get_current_user(authorization)
+        except HTTPException as e:
+            return JSONResponse(
+                content={"status": False, "message": "Invalid or expired token"},
+                status_code=401
+            )
+        if current_user["role"] != "manager":
+            return JSONResponse(
+                content={"status": False, "message": "Only managers can access this endpoint"},
+                status_code=403
+            )
+        manager_id = current_user["user_id"]
+        if not manager_id:
+            raise HTTPException(status_code=400, detail="Invalid token payload")    
+        manager = await db["hiring_managers"].find_one({"_id": ObjectId(manager_id)})
+        if not manager:
+            raise HTTPException(status_code=404, detail="Manager not found")
+        job_roles_collection = db["job_roles"]
+        profile_collection = db["resume_profiles"]
+
+        cursor = job_roles_collection.find({"created_by": current_user["user_id"]})
+
+        jobs = []
+        async for role in cursor:
+            role_id = str(role["_id"])
+
+            # Candidate counts
+            total_candidates = await profile_collection.count_documents({"job_id": role_id})
+            audio_attended_count = await profile_collection.count_documents({
+                "job_id": role_id,
+                "audio_interview": {"$exists": True}
+            })
+            video_attended_count = await profile_collection.count_documents({
+                "job_id": role_id,
+                "video_interview_start": True
+            })
+            moved_to_video_round_count = await profile_collection.count_documents({
+                "job_id": role_id,
+                "$or": [
+                    {"video_email_sent": True},
+                    {"application_status": "SendVideoLink"}
+                ]
+            })
+
+            # Convert ObjectId and serialize
+            job = serialize_document(role)
+            job["job_id"] = role_id
+            job.pop("_id", None)
+
+            # Handle datetime fields safely
+            for field in ["created_at", "updated_at"]:
+                if field in job and job[field]:
+                    if isinstance(job[field], datetime):
+                        job[field] = job[field].isoformat()
+                    else:
+                        job[field] = str(job[field])
+
+            # Append counts
+            job.update({
+                "total_candidates": total_candidates,
+                "audio_attended_count": audio_attended_count,
+                "video_attended_count": video_attended_count,
+                "moved_to_video_round_count": moved_to_video_round_count
+            })
+
+            jobs.append(job)
+        manager_profile = {
+            "manager_id": str(manager["_id"]),
+            "first_name": manager.get("first_name", ""),
+            "last_name": manager.get("last_name", ""),
+            "email": manager.get("email", ""),
+            "profile_created_at": manager.get("created_at").isoformat() if manager.get("created_at") else None,
+            "jobs":jobs
+        }
+
+        return {
+            "status": True,
+            "message": "Manager profile retrieved successfully",
+            "data": manager_profile
+        }
+    except HTTPException as he:
+        raise he
+    except Exception as e:  
+        error_msg = f"Error retrieving manager profile: {str(e)}"
+        logger.error(error_msg, exc_info=True)
+        raise HTTPException(status_code=500, detail=error_msg)
+
+
 @app.post("/candidate-login/")
 async def candidate_login(body: CandidateLoginRequest):
     try:
@@ -8228,6 +8300,13 @@ async def get_candidate_profile(authorization: str = Header(...)):
                 "candidate_id": candidate_id,
                 "name": candidate.get("name", ""),
                 "email": candidate.get("email", ""),
+                "phone": candidate.get("phone", ""),
+                "basic_information": candidate.get("basic_information", {}),
+                "career_overview": candidate.get("career_overview", {}),
+                "role_process_exposure": candidate.get("role_process_exposure", {}),
+                "sales_context": candidate.get("sales_context", {}),
+                "tools_platforms": candidate.get("tools_platforms", {}),
+                "resume_url": candidate.get("resume_url", None),
                 "application_history": application_history
             }
         }
@@ -8242,6 +8321,7 @@ async def get_candidate_profile(authorization: str = Header(...)):
 async def candidate_set_password(
     new_password: str = Body(..., embed=True, min_length=6),
     email:str= Body(..., embed=True),
+    otp: str = Body(..., embed=True,)
 ):
     try:
         collection = db["user_accounts"]
@@ -8250,6 +8330,25 @@ async def candidate_set_password(
             return JSONResponse(
                 content={"status": False, "message": "Email not found"},
                 status_code=404
+            )
+        acc_otp= candidate.get("otp")
+        if acc_otp != otp:
+            return JSONResponse(
+                content={"status": False, "message": "Invalid OTP"},
+                status_code=400
+            )
+        # Ensure timezone consistency
+        otp_time = candidate.get("otp_created_at")
+        if otp_time.tzinfo is None:
+            otp_time = otp_time.replace(tzinfo=timezone.utc)
+
+        current_time = datetime.now(timezone.utc)
+        elapsed_seconds = (current_time - otp_time).total_seconds()
+
+        if elapsed_seconds > 20 * 60:  # 20 minutes
+            return JSONResponse(
+                content={"status": False, "message": "OTP has expired"},
+                status_code=400
             )
         # Hash the new password
         salt = bcrypt.gensalt()
@@ -8517,7 +8616,7 @@ async def update_professional_summary(
 class RemindLaterRequest(BaseModel):
     application_id: str
     remaind_at: str
-from brevo_mail import send_remind_later_email
+from brevo_mail import send_remind_later_email, send_password_reset_email
 @app.post("/remind-later/")
 async def remind_me_later(
     request: RemindLaterRequest,
@@ -9728,6 +9827,491 @@ async def apply_job(
         return JSONResponse(
             status_code=500,
             content={"status": False, "message": f"Internal server error: {str(e)}"}
+        )
+
+@app.post("/reset-password/")
+async def reset_password(
+    body: dict,
+):
+    """
+    Endpoint to initiate password reset process.
+    Generates a reset token, stores it, and sends a reset email.
+    """
+    try:
+        user_collection = db["user_accounts"]
+        email = body.get("email")
+        user = await user_collection.find_one({"email": email})
+        if not user:
+            return JSONResponse(
+                status_code=404,
+                content={"status": False, "message": "Email not found"}
+            )
+        otp= otp = ''.join(random.choices(string.digits, k=6))
+        user_name=user.get("name", "User")
+        user_collection.update_one(
+            {"_id": user["_id"]},
+            {"$set": {"otp": otp, "otp_created_at": datetime.utcnow()}}
+        )
+        temp= await send_password_reset_email(email, otp, user_name)
+        logger.info(f"Password reset email sent: {temp}")
+        return {
+            "status": True,
+            "message": "Password reset email sent"
+        }
+    except Exception as e:
+        error_msg = f"Error in /reset-password/: {str(e)}"
+        logger.error(error_msg, exc_info=True)
+        return JSONResponse(
+            status_code=500,
+            content={"status": False, "message": error_msg}
+        )
+
+class AdminSignup(BaseModel):
+    first_name: str
+    last_name: str
+    email: EmailStr
+    password: str
+    phone: Optional[str] = None
+
+@app.post("/admin-signup/")
+async def hiring_manager_signup(admin:AdminSignup):
+    """
+    Register a new hiring manager profile in the database.
+    Returns the manager ID + tokens upon successful creation.
+    """
+    logger.info(f"Received hiring manager signup request for: {admin.email}")
+    
+    try:
+        # Prepare data
+        admin_dict = admin.dict()
+        admin_dict["created_at"] = datetime.utcnow()
+        
+        # Check if email already exists
+        collection = db["admin_accounts"]
+        existing_manager = await collection.find_one({"email": admin.email})
+        if existing_manager:
+            return JSONResponse(
+                status_code=400,
+                content={"status": False, "message": "admin with this email already exists"}
+            )
+        
+        # Hash the password
+        salt = bcrypt.gensalt()
+        hashed_password = bcrypt.hashpw(admin.password.encode('utf-8'), salt)
+        admin_dict["password"] = hashed_password.decode('utf-8')
+        
+        # Insert into DB
+        result = await collection.insert_one(admin_dict)
+        super_admin_id = str(result.inserted_id)
+
+        # Generate tokens
+        access_token = create_access_token(super_admin_id, "superadmin")
+        refresh_token = create_refresh_token(super_admin_id, "superadmin")
+
+         # save refresh token
+        await save_refresh_token(super_admin_id, "superadmin", refresh_token)
+
+        return {
+            "status": True,
+            "message": "Admin profile created successfully",
+            "admin_id": super_admin_id,
+            "data": {
+                "first_name": admin.first_name,
+                "last_name": admin.last_name,
+                "email": admin.email
+            },
+            "access_token": access_token,
+            "refresh_token": refresh_token,
+            "token_type": "bearer"
+        }
+
+    except HTTPException as he:
+        raise he
+    except Exception as e:
+        error_msg = f"Error creating admin profile: {str(e)}"
+        logger.error(error_msg, exc_info=True)
+        raise HTTPException(status_code=500, detail=error_msg)
+
+class AdminLogin(BaseModel):
+    email: str
+    password: str
+
+@app.post("/admin-login/")
+async def hiring_manager_login(login_request: AdminLogin):
+    """
+    Authenticate a hiring manager using email and password.
+    Returns access and refresh tokens on successful login.
+    """
+    try:
+        # Find manager by email
+        collection = db["admin_accounts"]
+        admin = await collection.find_one({"email": login_request.email})
+        if not admin:
+            return JSONResponse(
+                content={"status": False, "message": "Invalid email or password"},
+                status_code=401
+            )
+
+        # Verify password
+        stored_password = admin["password"].encode("utf-8")
+        if not bcrypt.checkpw(login_request.password.encode("utf-8"), stored_password):
+            return JSONResponse(
+                content={"status": False, "message": "Invalid email or password"},
+                status_code=401
+            )
+
+        admin_id = str(admin["_id"])
+
+        # Generate tokens with role
+        access_token = create_access_token(admin_id, role="superadmin")
+        refresh_token = create_refresh_token(admin_id, role="superadmin")
+
+        # Save refresh token in unified table
+        await db["refresh_tokens"].delete_many({"user_id": admin_id, "user_type": "superadmin"})
+        await save_refresh_token(admin_id, user_type="superadmin", refresh_token=refresh_token)
+
+        return {
+            "status": True,
+            "message": "Login successful",
+            "data": {
+                "first_name": admin["first_name"],
+                "last_name": admin["last_name"],
+                "email": admin["email"],
+            },
+            "access_token": access_token,
+            "refresh_token": refresh_token,
+            "token_type": "bearer"
+        }
+
+    except Exception as e:
+        error_msg = f"Error during admin login: {str(e)}"
+        logger.error(error_msg, exc_info=True)
+        raise HTTPException(status_code=500, detail=error_msg)
+    
+@app.post("/admin-reset-password/")
+async def reset_password(
+    body: dict,
+):
+    """
+    Endpoint to initiate password reset process.
+    Generates a reset token, stores it, and sends a reset email.
+    """
+    try:
+        user_collection = db["admin_accounts"]
+        email = body.get("email")
+        user = await user_collection.find_one({"email": email})
+        if not user:
+            return JSONResponse(
+                status_code=404,
+                content={"status": False, "message": "Email not found"}
+            )
+        otp= otp = ''.join(random.choices(string.digits, k=6))
+        user_name=user.get("name", "User")
+        user_collection.update_one(
+            {"_id": user["_id"]},
+            {"$set": {"otp": otp, "otp_created_at": datetime.utcnow()}}
+        )
+        temp= await send_password_reset_email(email, otp, user_name)
+        logger.info(f"Password reset email sent: {temp}")
+        return {
+            "status": True,
+            "message": "Password reset email sent"
+        }
+    except Exception as e:
+        error_msg = f"Error in /reset-password/: {str(e)}"
+        logger.error(error_msg, exc_info=True)
+        return JSONResponse(
+            status_code=500,
+            content={"status": False, "message": error_msg}
+        )
+@app.post("/admin-set-password/")
+async def candidate_set_password(
+    new_password: str = Body(..., embed=True, min_length=6),
+    email:str= Body(..., embed=True),
+    otp: str = Body(..., embed=True,)
+):
+    try:
+        collection = db["admin_accounts"]
+        candidate = await collection.find_one({"email": email})
+        if not candidate:
+            return JSONResponse(
+                content={"status": False, "message": "Email not found"},
+                status_code=404
+            )
+        acc_otp= candidate.get("otp")
+        if acc_otp != otp:
+            return JSONResponse(
+                content={"status": False, "message": "Invalid OTP"},
+                status_code=400
+            )
+        # Ensure timezone consistency
+        otp_time = candidate.get("otp_created_at")
+        if otp_time.tzinfo is None:
+            otp_time = otp_time.replace(tzinfo=timezone.utc)
+
+        current_time = datetime.now(timezone.utc)
+        elapsed_seconds = (current_time - otp_time).total_seconds()
+
+        if elapsed_seconds > 20 * 60:  # 20 minutes
+            return JSONResponse(
+                content={"status": False, "message": "OTP has expired"},
+                status_code=400
+            )
+        # Hash the new password
+        salt = bcrypt.gensalt()
+        hashed_password = bcrypt.hashpw(new_password.encode('utf-8'), salt)
+        # Update password in DB
+        await collection.update_one(
+            {"_id": candidate["_id"]},
+            {"$set": {"password": hashed_password.decode('utf-8'), "updated_at": datetime.utcnow()}}
+        )
+        return JSONResponse(
+            content={"status": True, "message": "Password updated successfully"},
+            status_code=200
+        )
+    except Exception as e:
+        error_msg = f"Error setting new password: {str(e)}"
+        logger.error(error_msg, exc_info=True)
+        return JSONResponse(content={"status": False, "message": error_msg}, status_code=500)
+class UserRequest(BaseModel):
+    user_id: str
+def serialize_document(doc):
+    """Recursively convert MongoDB document to JSON-serializable dict"""
+    if not doc:
+        return {}
+    def convert(value):
+        if isinstance(value, ObjectId):
+            return str(value)
+        elif isinstance(value, datetime):
+            return value.isoformat()
+        elif isinstance(value, list):
+            return [convert(v) for v in value]
+        elif isinstance(value, dict):
+            return {k: convert(v) for k, v in value.items()}
+        else:
+            return value
+    return convert(doc)
+
+
+@app.post("/get-user-details")
+async def get_user_details(body: UserRequest,authorization: str = Header(...),):
+    """
+    Get full user details with all applications (and linked data) for a user_id.
+    Includes job title from 'job_roles' collection.
+    """
+    try:
+        if not authorization.startswith("Bearer "):
+            return JSONResponse(status_code=401, content={"status": False, "message": "Invalid authorization header"})
+        token = authorization.split(" ")[1]
+
+        try:
+            payload = verify_access_token(token)
+            admin_id = payload.get("sub")
+            role = payload.get("role")
+            if not admin_id or role != "superadmin":
+                return JSONResponse(status_code=403, content={"status": False, "message": "Unauthorized"})
+        except Exception:
+            return JSONResponse(status_code=401, content={"status": False, "message": "Invalid or expired token"})
+        user_id = body.user_id
+        user_collection = db["user_accounts"]
+        interview_collection = db["interview_sessions"]
+        sales_collection = db["sales_scenarios"]
+        audio_collection = db["audio_interview_results"]
+        audio_proc_collection = db["audio_proctoring_logs"]
+        video_proc_collection = db["video_proctoring_logs"]
+        job_roles = db["job_roles"] 
+        if not ObjectId.is_valid(user_id):
+            raise HTTPException(status_code=400, detail="Invalid user ID format")
+
+        # 1️⃣ Fetch user
+        user = await user_accounts.find_one({"_id": ObjectId(user_id)})
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+
+        # 2️⃣ Fetch all profiles (applications)
+        profiles = await resume_profiles.find({"user_id": user_id}).to_list(None)
+        if not profiles:
+            return JSONResponse(
+                content={"status": True, "data": {"user": serialize_document(user), "applications": []}}
+            )
+
+        # Collect all application IDs and job IDs
+        application_ids = [str(p["_id"]) for p in profiles]
+        job_ids = [
+            ObjectId(p["job_id"])
+            for p in profiles
+            if p.get("job_id") and ObjectId.is_valid(p["job_id"])
+        ]
+
+        # 3️⃣ Bulk fetch all linked documents
+        interview_docs = await interview_collection.find({"application_id": {"$in": application_ids}}).to_list(None)
+        audio_docs = await audio_collection.find({"application_id": {"$in": application_ids}}).to_list(None)
+        audio_proc_docs = await audio_proc_collection.find({"application_id": {"$in": application_ids}}).to_list(None)
+        video_proc_docs = await video_proc_collection.find({"application_id": {"$in": application_ids}}).to_list(None)
+        sales_docs = await sales_collection.find({"application_id": {"$in": application_ids}}).to_list(None)
+        job_docs = await job_roles.find(
+            {"_id": {"$in": job_ids}}, {"basicInfo.jobTitle": 1}
+        ).to_list(None)  # <-- fetch only jobTitle field
+
+        # 4️⃣ Create lookup maps
+        interview_map = {doc["application_id"]: doc for doc in interview_docs}
+        audio_map = {doc["application_id"]: doc for doc in audio_docs}
+        audio_proc_map = {doc["application_id"]: doc for doc in audio_proc_docs}
+        video_proc_map = {doc["application_id"]: doc for doc in video_proc_docs}
+        sales_map = {doc["application_id"]: doc for doc in sales_docs}
+        job_map = {str(doc["_id"]): doc for doc in job_docs}
+
+        applications = []
+
+        # 5️⃣ Merge data for each profile
+        for profile in profiles:
+            application_id = str(profile["_id"])
+            job_id = str(profile.get("job_id")) if profile.get("job_id") else None
+            job_doc = job_map.get(job_id)
+
+            app_data = {
+                "application_id": application_id,
+                "profile_created_at": profile.get("created_at").isoformat() if profile.get("created_at") else None,
+                "application_status": profile.get("application_status", ""),
+                "final_shortlist": profile.get("final_shortlist", False),
+                "call_for_interview": profile.get("call_for_interview", False),
+                "job_details": {
+                    "job_id": job_id,
+                    "job_title": job_doc.get("basicInfo", {}).get("jobTitle") if job_doc else None
+                },
+                "interview_status": {
+                    "audio_interview_passed": profile.get("audio_interview", False),
+                    "video_interview_attended": bool(profile.get("video_url")),
+                    "audio_interview_attended": bool(profile.get("audio_url")),
+                    "video_email_sent": profile.get("video_email_sent", False),
+                    "video_interview_url": profile.get("video_url"),
+                    "processed_video_url": profile.get("processed_video_url", ""),
+                    "audio_interview_url": profile.get("audio_url"),
+                    "resume_url_from_user_account": user.get("resume_url")
+                }
+            }
+
+            # 🔹 Attach all linked data
+            if interview_map.get(application_id):
+                i = interview_map[application_id]
+                app_data["interview_details"] = serialize_document({
+                    "session_id": i["_id"],
+                    "created_at": i.get("created_at"),
+                    "communication_evaluation": i.get("communication_evaluation", {}),
+                    "key_highlights": i.get("interview_highlights", ""),
+                    "qa_evaluations": i.get("evaluation", [])
+                })
+
+            if audio_map.get(application_id):
+                a = audio_map[application_id]
+                app_data["audio_interview_details"] = serialize_document({
+                    "audio_interview_id": a["_id"],
+                    "created_at": a.get("created_at"),
+                    "qa_evaluations": a.get("qa_evaluations", {}),
+                    "audio_interview_summary": a.get("interview_summary", [])
+                })
+
+            if audio_proc_map.get(application_id):
+                app_data["audio_proctoring_details"] = serialize_document(audio_proc_map[application_id])
+
+            if video_proc_map.get(application_id):
+                app_data["video_proctoring_details"] = serialize_document(video_proc_map[application_id])
+
+            if sales_map.get(application_id):
+                s = sales_map[application_id]
+                app_data["sales_scenario_details"] = serialize_document({
+                    "session_id": s["_id"],
+                    "created_at": s.get("created_at"),
+                    "sales_conversation_evaluation": s.get("sales_conversation_evaluation", {}),
+                    "responses": s.get("responses", [])
+                })
+
+            applications.append(app_data)
+
+        # 6️⃣ Combine everything
+        result = {
+            "user": serialize_document({
+                "_id": user["_id"],
+                "name": user.get("name", ""),
+                "email": user.get("email", ""),
+                "phone": user.get("phone", ""),
+                "professional_summary": user.get("professional_summary", ""),
+                "basic_information": user.get("basic_information", {}),
+                "career_overview": user.get("career_overview", {}),
+                "role_process_exposure": user.get("role_process_exposure", {}),
+                "sales_context": user.get("sales_context", {}),
+                "tools_platforms": user.get("tools_platforms", {}),
+                "resume_url": user.get("resume_url", None),
+            }),
+            "applications": applications
+        }
+
+        return JSONResponse(content={"status": True, "data": result})
+
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        return JSONResponse(
+            status_code=500,
+            content={"status": False, "message": f"Server error: {str(e)}"}
+        )
+class JobStatusUpdateRequest(BaseModel):
+    job_id: str
+    new_status: bool
+@app.post("/job-status/")
+async def job_status(
+    body: JobStatusUpdateRequest,
+    authorization: str = Header(...)
+):
+    """
+    Update the status of a job.
+    Validates manager's access token and ownership of the job.
+    """
+    try:
+        # 1️⃣ Validate user
+        try:
+            current_user = await get_current_user(authorization)
+        except HTTPException:
+            return JSONResponse(
+                content={"status": False, "message": "Invalid or expired token"},
+                status_code=401
+            )
+        manager_id = current_user["user_id"]
+
+        # 2️⃣ Validate job_id
+        if not ObjectId.is_valid(body.job_id):
+            return JSONResponse(
+                content={"status": False, "message": "Invalid job ID"},
+                status_code=400
+            )
+
+        job_collection = db["job_roles"]
+
+        # 3️⃣ Check if job exists and belongs to manager
+        job = await job_collection.find_one({"_id": ObjectId(body.job_id), "created_by": manager_id})
+        if not job:
+            return JSONResponse(
+                status_code=404,
+                content={"status": False, "message": "Job not found or unauthorized"}
+            )
+
+        # 4️⃣ Update job status
+        await job_collection.update_one(
+            {"_id": ObjectId(body.job_id)},
+            {"$set": {"is_active": body.new_status, "updated_at": datetime.utcnow()}}
+        )
+
+        return {
+            "status": True,
+            "message": f"Job status updated to {body.new_status}"
+        }
+
+    except Exception as e:
+        error_msg = f"Error updating job status: {str(e)}"
+        logger.error(error_msg, exc_info=True)
+        return JSONResponse(
+            status_code=500,
+            content={"status": False, "message": error_msg}
         )
 ######################################################################
 if __name__ == "__main__":
