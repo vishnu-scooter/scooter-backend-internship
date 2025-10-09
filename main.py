@@ -5399,6 +5399,7 @@ async def get_job_candidates(
             candidate = {
                 "application_id": str(profile["_id"]),
                 "profile_created_at": profile.get("created_at").isoformat() if profile.get("created_at") else None,
+                "user_id": str(user["_id"]),
                 "name": user.get("name", ""),
                 "email": user.get("email", ""),
                 "phone": user.get("phone", ""),
@@ -7501,6 +7502,7 @@ async def get_my_job_candidates(
             candidate = {
                 "application_id": str(profile["_id"]),
                 "profile_created_at": profile.get("created_at").isoformat() if profile.get("created_at") else None,
+                "user_id": str(user["_id"]),
                 "name": user.get("name", ""),
                 "email": user.get("email", ""),
                 "phone": user.get("phone", ""),
