@@ -7424,7 +7424,7 @@ async def get_my_job_candidates(
         profiles = await profile_collection.find(
             filter_conditions,
             {"user_id": 1, "application_status": 1, "final_shortlist": 1, "call_for_interview": 1,
-             "audio_interview": 1, "audio_url": 1, "video_url": 1, "video_email_sent": 1, "created_at": 1,
+             "audio_interview": 1, "audio_url": 1, "video_url": 1, "video_email_sent": 1, "created_at": 1,"processed_video_url": 1,
              "career_overview": 1}
         ).sort("created_at", -1).skip(skip).limit(page_size).to_list(length=page_size)
 
