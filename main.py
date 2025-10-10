@@ -10347,6 +10347,303 @@ async def job_status(
             status_code=500,
             content={"status": False, "message": error_msg}
         )
+    
+@app.get("/old-job-candidates/{job_id}")
+async def get_job_candidates(
+    job_id: str,
+    page: int = Query(1, ge=1, description="Page number"),
+    page_size: int = Query(10, ge=1, le=100, description="Number of items per page"),
+    audio_attended: Optional[bool] = Query(None, description="Filter by audio interview status"),
+    video_attended: Optional[bool] = Query(None, description="Filter by video upload status"),
+    video_interview_sent: Optional[bool] = Query(None, description="Filter by video interview sent status"),
+    application_status: Optional[str] = Query(None, description="Filter by application status"),
+    shortlisted: Optional[bool] = Query(None, description="Filter by shortlisted status"),
+    all_candidates: Optional[bool] = Query(False, description="If true, ignore other filters and return all candidates"),
+    call_for_interview: Optional[bool] = Query(None, description="Filter by call for interview status")
+):
+    """
+    Get candidates for a specific job role with optional filters.
+    """
+    try:
+        # Validate job role exists
+        job_collection = db["job_roles"]
+        job = await job_collection.find_one({"_id": ObjectId(job_id)})
+        if not job:
+            raise HTTPException(status_code=404, detail="Job role not found")
+        # if not job.get("is_active", True):
+        #     raise HTTPException(status_code=400, detail="Inactive job role")
+        
+        # Get all profiles for this job role
+        profile_collection = db["resume_profiles"]
+        interview_collection = db["interview_sessions"]
+        sales_collection = db["sales_scenarios"]
+        audio_collection= db["audio_interview_results"]
+        audio_proctoring_collection = db["audio_proctoring_logs"]
+        video_proctoring_collection = db["video_proctoring_logs"]
+        
+        # Build filter conditions
+        filter_conditions = {"job_id": job_id}
+        
+        if all_candidates is not None:
+            if all_candidates:
+                filter_conditions = {"temp_list": True}
+
+        if audio_attended is not None:
+            if audio_attended:
+                filter_conditions["audio_interview"] = True
+            else:
+                filter_conditions["$or"] = [
+                    {"audio_interview": False},
+                    {"audio_interview": {"$exists": False}}
+                ]
+        
+        if application_status is not None:
+            if application_status == "SendVideoLink":
+                filter_conditions["$or"] = [
+                    { "video_email_sent": True },
+                    { "application_status": "SendVideoLink" }
+                ]
+            else:
+                filter_conditions["application_status"] = application_status
+        if video_attended is not None:
+            if video_attended:
+                filter_conditions["video_interview_start"] = True
+            else:
+                filter_conditions["$or"] = [
+                    {"video_interview_start": False},
+                    {"video_interview_start": {"$exists": False}}
+                ]
+        if video_interview_sent is not None:
+            if video_interview_sent:
+                filter_conditions["video_email_sent"] = True
+            else:
+                filter_conditions["$or"] = [
+                    {"video_email_sent": False},
+                    {"video_email_sent": {"$exists": False}}
+                ]
+
+        if shortlisted is not None:
+            if shortlisted:
+                filter_conditions["final_shortlist"] = True
+            else:
+                filter_conditions["$or"] = [
+                    {"final_shortlist": False},
+                    {"final_shortlist": {"$exists": False}}
+                ]
+        if call_for_interview is not None:
+            if call_for_interview:
+                filter_conditions["call_for_interview"] = True
+            else:
+                filter_conditions["call_for_interview"] = False
+        # Log the filter conditions for debugging
+        logger.info(f"Filter conditions: {filter_conditions}")
+        
+        # Get total count of candidates with filters
+        total_candidates = await profile_collection.count_documents(filter_conditions)
+        audio_attended_count = await profile_collection.count_documents({
+            **filter_conditions,
+            "audio_interview": True
+        })
+        # Get video attended count with filters
+        video_attended_count = await profile_collection.count_documents({
+            **filter_conditions,
+            "video_interview_start": True
+        })
+        moved_to_video_round_count = await profile_collection.count_documents({
+    **filter_conditions,
+    "job_id": job_id,
+    "$or": [
+        { "video_email_sent": True },
+        { "application_status": "SendVideoLink" }
+    ]
+})
+
+        logger.info(f"Total candidates found: {total_candidates}")
+        
+        # Calculate total pages
+        total_pages = (total_candidates + page_size - 1) // page_size
+        
+        # Validate page number
+        if page > total_pages and total_pages > 0:
+            raise HTTPException(status_code=400, detail=f"Page number exceeds total pages ({total_pages})")
+        
+        # Calculate skip value for pagination
+        skip = (page - 1) * page_size
+        
+        # Find profiles with pagination and filters
+        profiles = await profile_collection.find(
+            filter_conditions
+        ).sort("created_at", -1).skip(skip).limit(page_size).to_list(length=page_size)
+        
+        logger.info(f"Found {len(profiles)} profiles after pagination")
+        
+        # Process each profile to add interview details
+        candidates = []
+        for profile in profiles:
+            career_overview = profile.get("career_overview", {})
+            company_history = career_overview.get("company_history", [])
+
+            # Sort by latest start_date first
+            if company_history:
+                company_history.sort(key=lambda x: x.get("start_date", ""), reverse=True)
+
+            total_months = 0
+            now = datetime.utcnow()
+
+            for role in company_history:
+                start_date_str = role.get("start_date")
+                end_date_str = role.get("end_date")
+                is_current = role.get("is_current", False)
+
+                # Parse start_date
+                try:
+                    start_date = datetime.strptime(start_date_str, "%Y-%m-%d") if start_date_str else None
+                except ValueError:
+                    start_date = None
+
+                # If current, calculate till now
+                if is_current and start_date:
+                    diff = (now.year - start_date.year) * 12 + (now.month - start_date.month)
+                    role["duration_months"] = diff
+                    total_months += diff
+                elif start_date and end_date_str:
+                    # If both dates are present, calculate duration
+                    try:
+                        end_date = datetime.strptime(end_date_str, "%Y-%m-%d")
+                        diff = (end_date.year - start_date.year) * 12 + (end_date.month - start_date.month)
+                        role["duration_months"] = diff
+                        total_months += diff
+                    except ValueError:
+                        pass  # skip if end_date is malformed
+                else:
+                    # Fall back to existing duration if no dates
+                    total_months += role.get("duration_months", 0)
+
+            total_years_experience = round(total_months / 12, 1)
+            career_overview["company_history"] = company_history
+            career_overview["total_years_experience"] = total_years_experience
+            candidate = {
+                "profile_id": str(profile["_id"]),
+                "profile_created_at": profile["created_at"].isoformat() if "created_at" in profile else None,
+                "short_summary": profile.get("short_summary", ""),
+                "job_fit_assessment": profile.get("job_fit_assessment", " "),
+                "basic_information": profile.get("basic_information", {}),
+                "application_status": profile.get("application_status", ""),
+                "application_status_reason": profile.get("application_status_reason", ""),
+                "application_status_updated_at": profile.get("application_status_updated_at", None),
+                "candidate_source": profile.get("candidate_source", ""),
+                "final_shortlist": profile.get("final_shortlist", False),
+                "shortlist_status_reason": profile.get("shortlist_status_reason", ""),
+                "call_for_interview": profile.get("call_for_interview", False),
+                "call_for_interview_notes": profile.get("call_for_interview_notes", ""),
+                "career_overview": career_overview,
+                "interview_status": {
+                    "audio_interview_passed": profile.get("audio_interview", False),
+                    "video_interview_attended": bool(profile.get("video_url")),
+                    "audio_interview_attended": bool(profile.get("audio_url")),
+                    "video_email_sent": profile.get("video_email_sent", False),
+                    "video_interview_url": profile.get("video_url") if profile.get("video_url") else None,
+                    "processed_video_interview_url": profile.get("processed_video_url") if profile.get("processed_video_url") else None,
+                    "audio_interview_url": profile.get("audio_url") if profile.get("audio_url") else None,
+                    "resume_url": profile.get("resume_url") if profile.get("resume_url") else None
+                }
+            }
+            
+            # Get latest interview session
+            interview_session = await interview_collection.find_one(
+                {"user_id": str(profile["_id"])},
+                sort=[("created_at", -1)]
+            )
+            
+            if interview_session:
+                candidate["interview_details"] = {
+                    "session_id": str(interview_session["_id"]),
+                    "created_at": interview_session["created_at"].isoformat(),
+                    "communication_evaluation": interview_session.get("communication_evaluation", {}),
+                    "qa_evaluations": interview_session.get("evaluation", [])
+                }
+            audio_interview_session = await audio_collection.find_one(
+                {"user_id": str(profile["_id"])},
+                sort=[("created_at", -1)]
+            )
+            if audio_interview_session:
+                candidate["audio_interview_details"]= {
+                    "audio_interview_id": str(audio_interview_session["_id"]),
+                    "created_at":audio_interview_session["created_at"].isoformat(),
+                    "qa_evaluations": audio_interview_session.get("qa_evaluations",{}),
+                    "audio_interview_summary": audio_interview_session.get("interview_summary",[])
+                }
+            
+            audio_proctoring= await audio_proctoring_collection.find_one(
+                {"user_id": str(profile["_id"])},
+                sort=[("created_at", -1)]
+                )
+            if audio_proctoring:
+                candidate["audio_proctoring_details"] = serialize_document(dict(audio_proctoring))
+
+            video_proctoring = await video_proctoring_collection.find_one(
+                {"user_id": str(profile["_id"])},
+                sort=[("created_at", -1)]
+            )
+            if video_proctoring:
+                candidate["video_proctoring_details"] = serialize_document(dict(video_proctoring))
+            # Get latest sales scenario session
+            sales_session = await sales_collection.find_one(
+                {"user_id": str(profile["_id"])},
+                sort=[("created_at", -1)]
+            )
+            
+            if sales_session:
+                candidate["sales_scenario_details"] = {
+                    "session_id": str(sales_session["_id"]),
+                    "created_at": sales_session["created_at"].isoformat(),
+                    "sales_conversation_evaluation": sales_session.get("sales_conversation_evaluation", {}),
+                    "responses": sales_session.get("responses", [])
+                }
+            
+            candidates.append(candidate)
+        
+        # Calculate pagination metadata
+        has_next = page < total_pages
+        has_previous = page > 1
+        
+        response = {
+            "status": True,
+            "message": "Candidates retrieved successfully",
+            "job_details": {
+                "title": job["title"],
+                "description": job["description"],
+                "company_id": job["company_id"],
+                "moved_to_video_round_count": moved_to_video_round_count,
+                "audio_attended_count": audio_attended_count,
+                "video_attended_count": video_attended_count,
+                "candidate_count": total_candidates
+            },
+            "filters": {
+                "audio_attended": audio_attended,
+                "video_attended": video_attended,
+                "application_status": application_status
+            },
+            "pagination": {
+                "current_page": page,
+                "page_size": page_size,
+                "total_candidates": total_candidates,
+                "total_pages": total_pages,
+                "has_next": has_next,
+                "has_previous": has_previous
+            },
+            "candidates": candidates
+        }
+        
+        logger.info(f"Response prepared with {len(candidates)} candidates")
+        return response
+        
+    except HTTPException as he:
+        raise he
+    except Exception as e:
+        error_msg = f"Error retrieving job candidates: {str(e)}"
+        logger.error(error_msg, exc_info=True)
+        raise HTTPException(status_code=500, detail=error_msg)
 ######################################################################
 if __name__ == "__main__":
     logger.info("Starting FastAPI application")
