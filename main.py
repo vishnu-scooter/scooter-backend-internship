@@ -9595,16 +9595,18 @@ async def audio_interview(
     authorization: str = Header(...)
 ):
     try:
+        # Validate token
         try:
             current_user = await get_current_user(authorization)
-        except HTTPException as e:
+        except HTTPException:
             return JSONResponse(
                 content={"status": False, "message": "Invalid or expired token"},
                 status_code=401
             )
+
         user_id = current_user["user_id"]
 
-        # fetch user account
+        # Fetch user
         user_doc = await user_accounts.find_one({"_id": ObjectId(user_id)})
         if not user_doc:
             return JSONResponse({"status": False, "message": "User not found"}, status_code=404)
@@ -9613,14 +9615,37 @@ async def audio_interview(
         if not resume_text:
             return JSONResponse({"status": False, "message": "Resume not found"}, status_code=400)
 
-        # find or create session
+        # Find session
         session = await audio_results.find_one({"user_id": str(user_id), "application_id": request.application_id})
-                
+
+        # ✅ CASE 1: Already completed
         if session and session.get("completed", False):
             return JSONResponse(
-                {"status": True, "message": "You have already completed this interview.",},
+                {
+                    "status": True,
+                    "message": "You have already completed this interview.",
+                    "done": True,
+                    "stage": "done"
+                },
                 status_code=200
             )
+
+        # ✅ CASE 2: If session exists and user tries to start again (no answer)
+        if session and not session.get("completed", False) and request.answer is None:
+            qa_list = session.get("questionAnswers", [])
+            if len(qa_list) > 0:
+                # Interview already started — block restarting
+                return JSONResponse(
+                    {
+                        "status": True,
+                        "message": "You have already started this interview.",
+                        "done": False,
+                        "stage": "in_progress"
+                    },
+                    status_code=200
+                )
+
+        # ✅ CASE 3: Create session if not exists (new interview)
         if not session:
             questions = await generate_audio_intv_questions(resume_text)
             session = {
@@ -9635,12 +9660,13 @@ async def audio_interview(
             }
             await audio_results.insert_one(session)
 
-        # reload
+        # Reload session
         session = await audio_results.find_one({"user_id": str(user_id), "application_id": request.application_id})
         qa_list = session.get("questionAnswers", [])
         questions = session["questions"]
 
-        # Helper to append next question and detect last question
+        # --- NORMAL FLOW FROM HERE (unchanged) ---
+
         def get_next_question_response(qa_list, questions):
             next_q = questions[len(qa_list)]
             is_last = len(qa_list) + 1 == len(questions)
