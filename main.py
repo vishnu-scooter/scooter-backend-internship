@@ -9615,6 +9615,12 @@ async def audio_interview(
 
         # find or create session
         session = await audio_results.find_one({"user_id": str(user_id), "application_id": request.application_id})
+                
+        if session and session.get("completed", False):
+            return JSONResponse(
+                {"status": True, "message": "You have already completed this interview.",},
+                status_code=200
+            )
         if not session:
             questions = await generate_audio_intv_questions(resume_text)
             session = {
