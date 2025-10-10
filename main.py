@@ -5415,7 +5415,7 @@ async def get_job_candidates(
                 "call_for_interview": profile.get("call_for_interview", False),
                 "interview_status": {
                     "audio_interview_passed": profile.get("audio_interview", False),
-                    "video_interview_attended": bool(profile.get("video_url")),
+                    "video_interview_attended": bool(profile.get("processed_video_url")),
                     "audio_interview_attended": bool(profile.get("audio_url")),
                     "video_email_sent": profile.get("video_email_sent", False),
                     "video_interview_url": profile.get("video_url"),
