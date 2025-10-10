@@ -9824,7 +9824,7 @@ async def apply_job(
             if await cursor.to_list(length=1):
                 return JSONResponse(
                     status_code=400,
-                    content={"status": False, "message": "You already have an active application for this job"},
+                    content={"status": False, "applied":True,"message": "You already have an active application for this job"},
                 )
         # --- Step 4: Generate job fit assessment ---
         job_fit_assessment = await generate_job_fit_summary(resume_text, job_description)
@@ -9854,6 +9854,7 @@ async def apply_job(
         return {
             "status": True,
             "message": "Job application submitted successfully",
+            "applied": True,
             "application_id": application_id,
             "job_id": job_id,
         }
