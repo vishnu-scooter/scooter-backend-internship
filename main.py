@@ -5579,6 +5579,7 @@ async def update_application_status(request: ApplicationStatusRequest):
         )
         
         return {
+            "status": True,
             "message": "Application status updated successfully",
             "user_id": request.user_id,
             "application_status": request.application_status,
@@ -5795,6 +5796,7 @@ async def shortlist_application_status(request:FinalShortlistRequest):
         )
         
         return {
+            "status": True,
             "message": "Shortlist status updated successfully",
             "user_id": request.user_id,
             "shortlist_status": request.final_shortlist,
