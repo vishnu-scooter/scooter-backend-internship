@@ -8177,7 +8177,7 @@ async def candidate_login(body: CandidateLoginRequest):
         # Verify password
         if "password" not in candidate:
             return JSONResponse(
-                content={"status": False, "message": "Password is not set for this user"},
+                content={"status": False, "message": '''Oops! Looks like you haven't set a password yet. Click "Forgot Password" below to set one up.'''},
                 status_code=401
             )
         stored_password = candidate["password"].encode("utf-8")
