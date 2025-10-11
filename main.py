@@ -6522,6 +6522,7 @@ async def generate_job_description(input_data: Dict = Body(...)):
 @app.post("/update-video-proctoring-logs/")
 async def update_video_proctoring_logs(
     user_id: str = Body(...),
+    video_url: str = Body(...),
     video_proctoring_logs: Dict = Body(...)
 ):
     """
@@ -6529,9 +6530,17 @@ async def update_video_proctoring_logs(
     """
     try:
         collection = db["video_proctoring_logs"]
+        profile_collection = db["resume_profiles"]
         video_proctoring_logs["user_id"] = user_id
         video_proctoring_logs["updated_at"] = datetime.utcnow()
 
+        await profile_collection.update_one(
+            {"_id": ObjectId(user_id)},
+            {"$set": {
+                "video_url": video_url,
+                "video_uploaded_at": datetime.now(timezone.utc)
+            }}
+        )
         # Upsert the log entry
         result = await collection.update_one(
             {"user_id": user_id},
@@ -6548,7 +6557,6 @@ async def update_video_proctoring_logs(
     except Exception as e:
         logger.error(f"Error updating video proctoring logs: {e}")
         raise HTTPException(status_code=500, detail="Failed to update video proctoring logs.")
-
 @app.post("/update-audio-proctoring-logs/")
 async def update_audio_proctoring_logs(
     user_id: str = Body(...),
@@ -8677,10 +8685,10 @@ async def remind_me_later(
             {"_id": ObjectId(request.application_id)},
             {"$set": update_data}
         )
-        utc_dt = datetime.fromisoformat(request.remaind_at)
-        ist_tz = pytz.timezone("Asia/Kolkata")
-        ist_dt = utc_dt.astimezone(ist_tz)
-        remind_at_str = ist_dt.strftime("%d-%m-%Y %H:%M:%S IST")
+        # utc_dt = datetime.fromisoformat(request.remaind_at)
+        # ist_tz = pytz.timezone("Asia/Kolkata")
+        # ist_dt = utc_dt.astimezone(ist_tz)
+        remind_at_str = request.remaind_at
         send_remind_later_email(candidate_name, remind_at_str, candidate_email, candidate_phone)
         return JSONResponse(
             status_code=200,
