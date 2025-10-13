@@ -6616,7 +6616,8 @@ async def reset_video_interview(
         
         await collection.update_one(
             {"_id": ObjectId(user_id)},
-            {"$set": update_data}
+            {"$set": update_data,
+             "$inc": {"video_interview_reset_count": 1}}
         )
         
         return {
