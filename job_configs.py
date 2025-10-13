@@ -7,7 +7,7 @@ JOB_ID_SAI_MARKETING_SALES_MANAGER = "68679d053a72380f84a62458"
 JOB_ID_ZENOTI_SALES_DEVELOPMENT_REPRESENTATIVE="686e6a547bbea9491c14e165"
 JOB_ID_CLICKPOST="68905b9d5925cca675f43e00"
 JOB_ID_DEMO= "68dbb0e6e07e4078863fcf7b"
-
+JOB_ID_HTOLOOP="68e4b5e0c889a13b5d1d8891"
 # TestZeus Founding BDR Configuration
 TESTZEUS_FOUNDING_BDR_CONFIG = {
     "job_id": JOB_ID_TESTZEUS_FOUNDING_BDR,
@@ -1093,6 +1093,303 @@ DEMO_CONFIG = {
         {"score_range": [0, 19], "decision": "Do not proceed", "action": "Auto-reject"}
     ]
 }
+HTOLOOP_CONFIG = {
+    "job_id": JOB_ID_HTOLOOP,
+    "job_role": "Business Development Representative, H2Loop",
+    "interview_questions": [
+        {"question_number": 1, "question": "You’re the first sales hire at an early-stage B2B tech startup. The founders give you a desk, a laptop, and a target industry. What do you do in your first week? Walk us through your plan.", "evaluation_type": "Q1_First_Week_Plan"},
+        {"question_number": 2, "question": "The founders tell you: ‘We think automotive and telecom companies need our product, but we’re not totally sure who the buyer is.’ How would you figure out the ideal customer profile? What’s your approach?", "evaluation_type": "Q2_Finding_ICP"},
+        {"question_number": 3, "question": "You have no outbound cadences, no email templates, no call scripts. How do you build your first outreach sequence from scratch? Walk us through your process.", "evaluation_type": "Q3_Building_Outreach"},
+        {"question_number": 4, "question": "You’ve been doing outreach for 3 weeks. You’ve sent 200 emails and made 100 calls, but only booked 2 meetings. One founder asks: ‘Why isn’t this working?’ How do you respond? What would you actually say to them?", "evaluation_type": "Q4_Handling_Slow_Results"},
+        {"question_number": 5, "question": "A prospect responds: ‘This sounds interesting, but I don’t think your product actually solves our problem—it seems built for a different use case.’ Do you tell the founders? What do you do with this feedback?", "evaluation_type": "Q5_Product_Feedback"},
+        {"question_number": 6, "question": "You finally book a great meeting with a VP at a target account. The founder wants to join the call. How do you prep them? What do you tell them to do (or not do) on the call?", "evaluation_type": "Q6_Prep_Founder_Call"},
+        {"question_number": 7, "question": "You’re selling to technical buyers—engineers, architects, CTOs—who are skeptical of sales pitches. How do you approach a discovery call differently with them versus a typical B2B buyer? Show us your opening.", "evaluation_type": "Q7_Selling_Tech_Buyers"},
+        {"question_number": 8, "question": "A Principal Engineer says: ‘I need to see a technical demo before I can move forward.’ You don’t have a polished demo environment yet—the product is early. How do you handle this?", "evaluation_type": "Q8_Handling_Demo_Request"},
+        {"question_number": 9, "question": "You’re on a discovery call and realize the prospect’s problem is slightly different from what you expected. They’re asking questions you don’t know the answer to. Walk us through how you’d handle this.", "evaluation_type": "Q9_Handling_Unknown_Questions"}
+    ],
+    "evaluation_rubric": {
+        "Q1_First_Week_Plan": {
+            "prompt_instructions": "Evaluate candidate's clarity, resourcefulness, and understanding of sales fundamentals in their first week plan.",
+            "scoring_logic": {
+                "Structure_Clarity": [
+                    {"threshold": 0, "score": 0, "criteria": "No coherent plan or rambling response"},
+                    {"threshold": 1, "score": 1, "criteria": "Vague plan, mostly high-level statements"},
+                    {"threshold": 2, "score": 2, "criteria": "General plan with some specific actions"},
+                    {"threshold": 3, "score": 3, "criteria": "Clear sequential plan with specific daily/weekly actions"}
+                ],
+                "Independence_Resourcefulness": [
+                    {"threshold": 0, "score": 0, "criteria": "No mention of tools or how they'd get started"},
+                    {"threshold": 1, "score": 1, "criteria": "Relies on founders to provide everything"},
+                    {"threshold": 2, "score": 2, "criteria": "Mentions 1 tool or only generic resources"},
+                    {"threshold": 3, "score": 3, "criteria": "Mentions 2-3 specific tools/resources"},
+                    {"threshold": 4, "score": 4, "criteria": "Mentions 4+ specific tools/resources"}
+                ],
+                "Sales_Fundamentals": [
+                    {"threshold": 0, "score": 0, "criteria": "No mention of core prospecting activities"},
+                    {"threshold": 1, "score": 1, "criteria": "Includes only 1 element"},
+                    {"threshold": 2, "score": 2, "criteria": "Includes 2 of 3 elements (ICP research, list building, outreach testing)"},
+                    {"threshold": 3, "score": 3, "criteria": "Includes ICP research, list building, AND outreach testing"}
+                ]
+            }
+        },
+        "Q2_Finding_ICP": {
+            "prompt_instructions": "Evaluate research methodology, customer-centric thinking, and iterative mindset in defining ideal customer profile.",
+            "scoring_logic": {
+                "Research_Methodology": [
+                    {"threshold": 0, "score": 0, "criteria": "No clear methodology"},
+                    {"threshold": 1, "score": 1, "criteria": "Vague approach with no specific methods"},
+                    {"threshold": 2, "score": 2, "criteria": "Describes 1 validation method"},
+                    {"threshold": 3, "score": 3, "criteria": "Describes 2 validation methods"},
+                    {"threshold": 4, "score": 4, "criteria": "Describes 3+ validation methods"}
+                ],
+                "Customer_Centric_Thinking": [
+                    {"threshold": 0, "score": 0, "criteria": "No mention of customer problems"},
+                    {"threshold": 1, "score": 1, "criteria": "Focuses only on job titles or company size"},
+                    {"threshold": 2, "score": 2, "criteria": "Mentions pain points but stays surface-level"},
+                    {"threshold": 3, "score": 3, "criteria": "Focuses on pain points, buying triggers, and technical problems"}
+                ],
+                "Iteration_Mindset": [
+                    {"threshold": 0, "score": 0, "criteria": "No mention of learning or adaptation"},
+                    {"threshold": 1, "score": 1, "criteria": "Presents one-time research approach"},
+                    {"threshold": 2, "score": 2, "criteria": "Implies iteration but doesn't explicitly state it"},
+                    {"threshold": 3, "score": 3, "criteria": "Explicitly mentions testing, learning, and refining ICP over time"}
+                ]
+            }
+        },
+        "Q3_Building_Outreach": {
+            "prompt_instructions": "Evaluate multi-channel approach, content strategy, and process thinking in creating first outreach sequence.",
+            "scoring_logic": {
+                "Multi_Channel_Approach": [
+                    {"threshold": 0, "score": 0, "criteria": "No clear channel strategy"},
+                    {"threshold": 1, "score": 1, "criteria": "Mentions 1 channel only"},
+                    {"threshold": 2, "score": 2, "criteria": "Mentions 2 channels"},
+                    {"threshold": 3, "score": 3, "criteria": "Mentions 3+ channels"}
+                ],
+                "Content_Strategy": [
+                    {"threshold": 0, "score": 0, "criteria": "No content strategy mentioned"},
+                    {"threshold": 1, "score": 1, "criteria": "Generic messaging approach"},
+                    {"threshold": 2, "score": 2, "criteria": "Mentions personalization only"},
+                    {"threshold": 3, "score": 3, "criteria": "Describes personalization and value prop"},
+                    {"threshold": 4, "score": 4, "criteria": "Describes research-based personalization, value prop testing, and A/B testing approach"}
+                ],
+                "Process_Thinking": [
+                    {"threshold": 0, "score": 0, "criteria": "No mention of measurement or iteration"},
+                    {"threshold": 1, "score": 1, "criteria": "Vague mention of 'seeing what works'"},
+                    {"threshold": 2, "score": 2, "criteria": "Mentions tracking or measuring"},
+                    {"threshold": 3, "score": 3, "criteria": "Mentions tracking, measuring, and iterating based on results"}
+                ]
+            }
+        },
+        "Q4_Handling_Slow_Results": {
+            "prompt_instructions": "Evaluate transparency, problem-solving, and action plan when outreach results are slow.",
+            "scoring_logic": {
+                "Transparency_Accountability": [
+                    {"threshold": 0, "score": 0, "criteria": "Fully defensive or blames founders/product"},
+                    {"threshold": 1, "score": 1, "criteria": "Mostly blames external factors"},
+                    {"threshold": 2, "score": 2, "criteria": "Partially deflects or makes excuses"},
+                    {"threshold": 3, "score": 3, "criteria": "Takes ownership but somewhat defensive"},
+                    {"threshold": 4, "score": 4, "criteria": "Takes ownership, no excuses, presents data objectively"}
+                ],
+                "Problem_Solving": [
+                    {"threshold": 0, "score": 0, "criteria": "No problem analysis"},
+                    {"threshold": 1, "score": 1, "criteria": "No clear hypotheses, just excuses"},
+                    {"threshold": 2, "score": 2, "criteria": "Presents 1 hypothesis or vague theories"},
+                    {"threshold": 3, "score": 3, "criteria": "Presents 2 hypotheses with some data"},
+                    {"threshold": 4, "score": 4, "criteria": "Presents 3+ specific hypotheses with data"}
+                ],
+                "Action_Plan": [
+                    {"threshold": 0, "score": 0, "criteria": "No action plan"},
+                    {"threshold": 1, "score": 1, "criteria": "Vague plan to 'try harder' or 'do more'"},
+                    {"threshold": 2, "score": 2, "criteria": "Proposes specific next steps to test and improve"}
+                ]
+            }
+        },
+        "Q5_Product_Feedback": {
+            "prompt_instructions": "Evaluate how candidate uses feedback constructively and maintains relationship.",
+            "scoring_logic": {
+                "Brings_Feedback_to_Founders": [
+                    {"threshold": 0, "score": 0, "criteria": "Ignores the question or dismisses feedback"},
+                    {"threshold": 1, "score": 1, "criteria": "Says 'no' or tries to handle it themselves"},
+                    {"threshold": 2, "score": 2, "criteria": "Says 'maybe' or 'depends'"},
+                    {"threshold": 3, "score": 3, "criteria": "Says yes but hesitant or unclear on value"},
+                    {"threshold": 4, "score": 4, "criteria": "Explicitly says 'yes, immediately' and explains why it's valuable"}
+                ],
+                "Uses_Feedback_Constructively": [
+                    {"threshold": 0, "score": 0, "criteria": "No constructive use of feedback"},
+                    {"threshold": 1, "score": 1, "criteria": "Treats feedback as one-off data point"},
+                    {"threshold": 2, "score": 2, "criteria": "Acknowledges feedback value but no clear process"},
+                    {"threshold": 3, "score": 3, "criteria": "Describes how to validate feedback, pattern-match, and inform strategy"}
+                ],
+                "Maintains_Prospect_Relationship": [
+                    {"threshold": 0, "score": 0, "criteria": "Would disengage from prospect"},
+                    {"threshold": 1, "score": 1, "criteria": "Focuses only on internal feedback loop"},
+                    {"threshold": 2, "score": 2, "criteria": "Mentions keeping prospect warm"},
+                    {"threshold": 3, "score": 3, "criteria": "Describes how to keep prospect engaged while exploring feedback"}
+                ]
+            }
+        },
+        "Q6_Prep_Founder_Call": {
+            "prompt_instructions": "Evaluate how candidate prepares founder for a high-value call.",
+            "scoring_logic": {
+                "Founder_Guidance": [
+                    {"threshold": 0, "score": 0, "criteria": "No guidance or says founder doesn't need prep"},
+                    {"threshold": 1, "score": 1, "criteria": "Vague guidance like 'just be yourself'"},
+                    {"threshold": 2, "score": 2, "criteria": "Provides 1 specific guideline"},
+                    {"threshold": 3, "score": 3, "criteria": "Provides 2 specific guidelines"},
+                    {"threshold": 4, "score": 4, "criteria": "Provides 3 specific guidelines"},
+                    {"threshold": 5, "score": 5, "criteria": "Provides 4+ specific dos/don'ts"}
+                ],
+                "Role_Clarity": [
+                    {"threshold": 0, "score": 0, "criteria": "No role clarity"},
+                    {"threshold": 1, "score": 1, "criteria": "Vague roles"},
+                    {"threshold": 2, "score": 2, "criteria": "Some role definition but unclear boundaries"},
+                    {"threshold": 3, "score": 3, "criteria": "Clearly defines who does what on the call"}
+                ],
+                "Call_Preparation": [
+                    {"threshold": 0, "score": 0, "criteria": "No preparation discussed"},
+                    {"threshold": 1, "score": 1, "criteria": "Mentions minimal prep"},
+                    {"threshold": 2, "score": 2, "criteria": "Mentions sharing prospect research, call agenda, or key questions"}
+                ]
+            }
+        },
+        "Q7_Selling_Tech_Buyers": {
+            "prompt_instructions": "Evaluate credibility, opening delivery, and technical empathy with skeptical technical buyers.",
+            "scoring_logic": {
+                "Credibility_Building": [
+                    {"threshold": 0, "score": 0, "criteria": "Doesn't differentiate approach"},
+                    {"threshold": 1, "score": 1, "criteria": "Uses same pitch as business buyers"},
+                    {"threshold": 2, "score": 2, "criteria": "Generic approach with slight modifications"},
+                    {"threshold": 3, "score": 3, "criteria": "Mentions being 'less salesy' but vague"},
+                    {"threshold": 4, "score": 4, "criteria": "Demonstrates understanding that engineers value data, specifics, and peer credibility over hype"}
+                ],
+                "Opening_Delivery": [
+                    {"threshold": 0, "score": 0, "criteria": "Overly aggressive or salesy"},
+                    {"threshold": 1, "score": 1, "criteria": "Generic sales opening"},
+                    {"threshold": 2, "score": 2, "criteria": "Decent tone but slightly pitchy"},
+                    {"threshold": 3, "score": 3, "criteria": "Natural, consultative tone; asks questions; shows technical respect"}
+                ],
+                "Technical_Empathy": [
+                    {"threshold": 0, "score": 0, "criteria": "No technical empathy"},
+                    {"threshold": 1, "score": 1, "criteria": "Minimal technical awareness"},
+                    {"threshold": 2, "score": 2, "criteria": "Acknowledges engineers are different but surface-level understanding"},
+                    {"threshold": 3, "score": 3, "criteria": "Shows understanding of engineer workflow, constraints, and skepticism"}
+                ]
+            }
+        },
+        "Q8_Handling_Demo_Request": {
+            "prompt_instructions": "Evaluate honesty, creative problem-solving, and momentum when demo isn't ready.",
+            "scoring_logic": {
+                "Honesty_Transparency": [
+                    {"threshold": 0, "score": 0, "criteria": "Lies or avoids the question"},
+                    {"threshold": 1, "score": 1, "criteria": "Makes excuses or deflects"},
+                    {"threshold": 2, "score": 2, "criteria": "Tries to hide product stage"},
+                    {"threshold": 3, "score": 3, "criteria": "Honest but apologetic or over-explains"},
+                    {"threshold": 4, "score": 4, "criteria": "Upfront about product stage while maintaining confidence"}
+                ],
+                "Creative_Problem_Solving": [
+                    {"threshold": 0, "score": 0, "criteria": "No alternative offered"},
+                    {"threshold": 1, "score": 1, "criteria": "Just says 'we'll get back to you'"},
+                    {"threshold": 2, "score": 2, "criteria": "Vague alternative like 'let me check with team'"},
+                    {"threshold": 3, "score": 3, "criteria": "Offers 1 alternative but not compelling"},
+                    {"threshold": 4, "score": 4, "criteria": "Offers alternative (working session, technical deep-dive, proof-of-concept discussion)"}
+                ],
+                "Maintains_Momentum": [
+                    {"threshold": 0, "score": 0, "criteria": "Stalls or loses prospect"},
+                    {"threshold": 1, "score": 1, "criteria": "Loses some momentum"},
+                    {"threshold": 2, "score": 2, "criteria": "Keeps prospect engaged and moving forward"}
+                ]
+            }
+        },
+        "Q9_Handling_Unknown_Questions": {
+            "prompt_instructions": "Evaluate honesty, recovery strategy, and turning unknown questions into opportunities.",
+            "scoring_logic": {
+                "Honesty_About_Gaps": [
+                    {"threshold": 0, "score": 0, "criteria": "Makes up answer or becomes flustered"},
+                    {"threshold": 1, "score": 1, "criteria": "Tries to fake knowledge or deflect"},
+                    {"threshold": 2, "score": 2, "criteria": "Admits but apologetic or defensive"},
+                    {"threshold": 3, "score": 3, "criteria": "Directly admits 'I don't know' without over-apologizing"}
+                ],
+                "Recovery_Strategy": [
+                    {"threshold": 0, "score": 0, "criteria": "No recovery attempt"},
+                    {"threshold": 1, "score": 1, "criteria": "Doesn't commit to follow-up"},
+                    {"threshold": 2, "score": 2, "criteria": "Generic 'I'll get back to you'"},
+                    {"threshold": 3, "score": 3, "criteria": "Says they'll follow up but vague"},
+                    {"threshold": 4, "score": 4, "criteria": "Commits to specific follow-up with founder/technical team and timeline"}
+                ],
+                "Turns_Into_Opportunity": [
+                    {"threshold": 0, "score": 0, "criteria": "Call derails completely"},
+                    {"threshold": 1, "score": 1, "criteria": "Rushes past the moment"},
+                    {"threshold": 2, "score": 2, "criteria": "Continues call but doesn't leverage moment"},
+                    {"threshold": 3, "score": 3, "criteria": "Uses gap to learn more, asks deeper questions, uncovers needs"}
+                ]
+            }
+        },
+    "q_final":{
+            "prompt_instructions": "Evaluate based on specificity in self-reflection and a growth mindset.",
+            "scoring_logic": {
+                "specificity_detection": [
+                    {"type": "generic", "score": 1, "criteria": "All generic statements"},
+                    {"type": "some_details", "score": 2, "criteria": "Some specific details"},
+                    {"type": "1-2_examples", "score": 3, "criteria": "1-2 specific examples"},
+                    {"type": "2-3_examples", "score": 4, "criteria": "2-3 specific examples"},
+                    {"type": "multiple_detailed_examples", "score": 5, "criteria": "Multiple detailed examples"}
+                ],
+                "specificity_indicators": ["numbers", "company names", "specific situations", "metrics", "timeframes", "dollar amounts", "percentages"],
+                "bonuses": [
+                    {"type": "company_research", "score": 1, "keywords": ["Zenoti", "wellness industry", "competitors"]},
+                    {"type": "growth_language", "score": 1, "keywords": ["learn", "improve", "develop", "coach", "feedback"]}
+                ],
+                "cap": 5,
+                "notes": "Assesses the depth of self-reflection and openness to growth."
+            }
+        },
+    },
+    "trait_rubric": {
+        "Grit": {
+            "prompt_instructions": "Evaluated from Q1 + Q4. Look for persistence and action under pressure.",
+            "criteria": [
+                {"score": 5, "description": "Creative tactics + urgency + finishes strong"},
+                {"score": 4, "description": "Multiple tactics + solid follow-through"},
+                {"score": 3, "description": "Basic persistence and intent"},
+                {"score": 2, "description": "Mild effort, limited urgency"},
+                {"score": 1, "description": "Gives up or disengaged"}
+            ],
+            "source_question": [1, 4]
+        },
+        "Adaptability": {
+            "prompt_instructions": "Evaluated from Q2. Look for reflection, signal interpretation, and fast adjustment.",
+            "criteria": [
+                {"score": 5, "description": "Rapid learning + clear buyer signal plan"},
+                {"score": 4, "description": "Learns and adapts clearly"},
+                {"score": 3, "description": "Some self-awareness"},
+                {"score": 2, "description": "Struggles with adjustment"},
+                {"score": 1, "description": "Defensive or unaware"}
+            ],
+            "source_question": 2
+        },
+        "Coachability": {
+            "prompt_instructions": "Evaluated from Q5. Look for humility, learning mindset, and openness.",
+            "criteria": [
+                {"score": 5, "description": "Mentions learning, feedback, and growth directly"},
+                {"score": 4, "description": "Shows willingness to adapt"},
+                {"score": 3, "description": "Neutral or general positivity"},
+                {"score": 2, "description": "Mild resistance or vague"},
+                {"score": 1, "description": "Closed off or arrogant"}
+            ],
+            "source_question": 5
+        }
+    
+        
+    },
+    "overall_decision_thresholds": [
+        {"score_range": [75, 90], "decision": "Strong Hire", "action": "Demonstrates founder-readiness, builder mentality, technical selling ability"},
+        {"score_range": [60, 74], "decision": "Consider", "action": "Has potential but may need more startup or technical selling experience"},
+        {"score_range": [45, 59], "decision": "Weak", "action": "Missing critical skills for first sales hire"},
+        {"score_range": [0, 44], "decision": "No Hire", "action": "Not ready for this role"}
+    ]
+    }
+
+
 
 # Master dictionary to hold all job configurations, keyed by job_id
 JOB_CONFIGS = {
@@ -1102,6 +1399,7 @@ JOB_CONFIGS = {
     JOB_ID_TESTZEUS_FOUNDING_BDR: TESTZEUS_FOUNDING_BDR_CONFIG,
     JOB_ID_CLICKPOST: CLICKPOST_CONFIG,
     JOB_ID_DEMO: DEMO_CONFIG,
+    JOB_ID_HTOLOOP:HTOLOOP_CONFIG,
     # Add other job configurations here, using their respective job_ids as keys
 }
 
