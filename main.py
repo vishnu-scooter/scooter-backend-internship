@@ -9215,6 +9215,7 @@ async def conversational_interview(
             "session_id": session_id,
             "question": first_question["question"],
             "step": "question",
+            "total_questions": len(interview_questions)+1,
             "reset_count": reset_count
         }
 
