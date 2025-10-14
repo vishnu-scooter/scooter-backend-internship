@@ -5411,6 +5411,8 @@ async def get_job_candidates(
                 "tools_platforms": user.get("tools_platforms", {}),
                 "resume_url": user.get("resume_url", None),
                 "application_status": profile.get("application_status", ""),
+                "job_fit_assessment": profile.get("job_fit_assessment", ""),
+                "audio_updated_job_fit_assessment": profile.get("audio_updated_job_fit_assessment", ""),
                 "final_shortlist": profile.get("final_shortlist", False),
                 "call_for_interview": profile.get("call_for_interview", False),
                 "interview_status": {
@@ -7525,6 +7527,8 @@ async def get_my_job_candidates(
                 "tools_platforms": user.get("tools_platforms", {}),
                 "resume_url": user.get("resume_url", None),
                 "application_status": profile.get("application_status", ""),
+                "job_fit_assessment": profile.get("job_fit_assessment", ""),
+                "audio_updated_job_fit_assessment": profile.get("audio_updated_job_fit_assessment", ""),
                 "final_shortlist": profile.get("final_shortlist", False),
                 "call_for_interview": profile.get("call_for_interview", False),
                 "interview_status": {
