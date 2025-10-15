@@ -1069,10 +1069,10 @@ async def generate_interview_questions(profile_id: str, posting_title: str) -> L
 async def generate_audio_intv_questions(resume_text: str)  -> list[str]:
     prompt = f"""
 You are an expert recruiter.
-Your task is to generate 3 interview questions tailored to the candidate’s resume.
+Your task is to generate 3 interview questions tailored to the candidate’s CV.
 Follow the rules below carefully.
 
-Resume:
+CV:
 {resume_text}
 
 Question Rules
@@ -1080,7 +1080,7 @@ Question Rules
 Q1 – Performance / Achievement
 
 If performance metrics, quotas, awards, or notable achievements are present:
-"Just went through your resume and saw that you [SPECIFIC_CLAIM] — that’s [positive adjective]! Could you tell me a bit more about that?"
+"Just went through your CV and saw that you [SPECIFIC_CLAIM] — that’s [positive adjective]! Could you tell me a bit more about that?"
 
 
 If no performance/achievement data:
