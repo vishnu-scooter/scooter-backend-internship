@@ -9638,7 +9638,7 @@ async def audio_interview(
         if session and session.get("completed", False):
             return JSONResponse(
                 {
-                    "status": True,
+                    "status": False,
                     "message": "You have already completed this interview.",
                     "done": True,
                     "stage": "done"
