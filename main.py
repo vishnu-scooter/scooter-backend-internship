@@ -5313,7 +5313,7 @@ async def get_job_candidates(
         # --- Fetch profiles in bulk ---
         profiles = await profile_collection.find(
             filter_conditions,
-            {"user_id": 1, "application_status": 1, "final_shortlist": 1, "call_for_interview": 1,"seen_by_manager": 1,
+            {"user_id": 1, "application_status": 1, "final_shortlist": 1, "call_for_interview": 1,"seen_by_manager": 1,"job_fit_assessment":1, "audio_updated_job_fit_assessment":1,
              "audio_interview": 1, "audio_url": 1, "video_url": 1, "video_email_sent": 1, "created_at": 1,"processed_video_url": 1,
              "career_overview": 1}
         ).sort("created_at", -1).skip(skip).limit(page_size).to_list(length=page_size)
@@ -7425,7 +7425,7 @@ async def get_my_job_candidates(
         # --- Fetch profiles in bulk ---
         profiles = await profile_collection.find(
             filter_conditions,
-            {"user_id": 1, "application_status": 1, "final_shortlist": 1, "call_for_interview": 1, "seen_by_manager": 1,
+            {"user_id": 1, "application_status": 1, "final_shortlist": 1, "call_for_interview": 1, "seen_by_manager": 1,"job_fit_assessment":1, "audio_updated_job_fit_assessment":1,
              "audio_interview": 1, "audio_url": 1, "video_url": 1, "video_email_sent": 1, "created_at": 1,"processed_video_url": 1,
              "career_overview": 1}
         ).sort("created_at", -1).skip(skip).limit(page_size).to_list(length=page_size)
