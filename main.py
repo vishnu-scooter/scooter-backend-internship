@@ -5269,14 +5269,7 @@ async def get_job_candidates(
             filter_conditions["audio_interview"] = True if audio_attended else {"$ne": True}
 
         if seen is not None:
-            if seen:
-                filter_conditions["application_status"] = {"$exists": True, "$type": "string", "$ne": ""}
-            else:
-                filter_conditions["$or"] = [
-                    {"application_status": {"$exists": False}},
-                    {"application_status": None},
-                    {"application_status": ""}
-                ]
+            filter_conditions["seen_by_manager"] = True if seen else {"$ne": True}
 
         if application_status is not None:
             if application_status == "SendVideoLink":
@@ -5320,7 +5313,7 @@ async def get_job_candidates(
         # --- Fetch profiles in bulk ---
         profiles = await profile_collection.find(
             filter_conditions,
-            {"user_id": 1, "application_status": 1, "final_shortlist": 1, "call_for_interview": 1,
+            {"user_id": 1, "application_status": 1, "final_shortlist": 1, "call_for_interview": 1,"seen_by_manager": 1,
              "audio_interview": 1, "audio_url": 1, "video_url": 1, "video_email_sent": 1, "created_at": 1,"processed_video_url": 1,
              "career_overview": 1}
         ).sort("created_at", -1).skip(skip).limit(page_size).to_list(length=page_size)
@@ -5415,6 +5408,7 @@ async def get_job_candidates(
                 "audio_updated_job_fit_assessment": profile.get("audio_updated_job_fit_assessment", ""),
                 "final_shortlist": profile.get("final_shortlist", False),
                 "call_for_interview": profile.get("call_for_interview", False),
+                "seen_by_manager": profile.get("seen_by_manager", False),
                 "interview_status": {
                     "audio_interview_passed": profile.get("audio_interview", False),
                     "video_interview_attended": bool(profile.get("processed_video_url")),
@@ -6490,8 +6484,8 @@ async def submit_ticket(
             ticket_dict["screenshot_url"] = screenshot_url
 
         await collection.insert_one(ticket_dict)
-        notify_developer_of_new_ticket(ticket_dict)
-        send_support_conformation_email(email, reference_number, name)
+        await notify_developer_of_new_ticket(ticket_dict)
+        await send_support_conformation_email(email, reference_number, name)
         # You can trigger your Mailgun logic here using `email` and `reference_number`
 
         return {
@@ -6612,6 +6606,7 @@ async def reset_video_interview(
             "video_interview_start": False,
             "video_url": None,
             "video_uploaded_at": None,
+            "processed_video_url": None,
             "video_interview_reset_reason": reset_reason,
             "video_interview_reset_at": datetime.utcnow()
         }
@@ -7385,14 +7380,8 @@ async def get_my_job_candidates(
             filter_conditions["audio_interview"] = True if audio_attended else {"$ne": True}
 
         if seen is not None:
-            if seen:
-                filter_conditions["application_status"] = {"$exists": True, "$type": "string", "$ne": ""}
-            else:
-                filter_conditions["$or"] = [
-                    {"application_status": {"$exists": False}},
-                    {"application_status": None},
-                    {"application_status": ""}
-                ]
+            filter_conditions["seen_by_manager"] = True if seen else {"$ne": True}
+
 
         if application_status is not None:
             if application_status == "SendVideoLink":
@@ -7436,7 +7425,7 @@ async def get_my_job_candidates(
         # --- Fetch profiles in bulk ---
         profiles = await profile_collection.find(
             filter_conditions,
-            {"user_id": 1, "application_status": 1, "final_shortlist": 1, "call_for_interview": 1,
+            {"user_id": 1, "application_status": 1, "final_shortlist": 1, "call_for_interview": 1, "seen_by_manager": 1,
              "audio_interview": 1, "audio_url": 1, "video_url": 1, "video_email_sent": 1, "created_at": 1,"processed_video_url": 1,
              "career_overview": 1}
         ).sort("created_at", -1).skip(skip).limit(page_size).to_list(length=page_size)
@@ -7531,6 +7520,7 @@ async def get_my_job_candidates(
                 "audio_updated_job_fit_assessment": profile.get("audio_updated_job_fit_assessment", ""),
                 "final_shortlist": profile.get("final_shortlist", False),
                 "call_for_interview": profile.get("call_for_interview", False),
+                "seen_by_manager": profile.get("seen_by_manager", False),
                 "interview_status": {
                     "audio_interview_passed": profile.get("audio_interview", False),
                     "video_interview_attended": bool(profile.get("processed_video_url")),
@@ -7618,6 +7608,8 @@ class ContactUsBody(BaseModel):
     designation: str
     companyName: str
     companyEmail: EmailStr
+    phone: Optional[str] = None
+    linkedin: Optional[str] = None
     query: str | None = None
 
 class ContactUsResponse(BaseModel):
@@ -7637,10 +7629,12 @@ async def contact_us(body: ContactUsBody = Body(...)):
             "companyName": body.companyName,
             "companyEmail": body.companyEmail,
             "query": body.query,
+            "phone": body.phone,
+            "linkedin": body.linkedin,
             "created_at": datetime.utcnow()
         }
         await collection.insert_one(contact_doc)
-
+        await notify_admins_for_new_lead(name=body.name, companyName=body.companyName, companyEmail=body.companyEmail, phone=body.phone, query=body.query, linkedin=body.linkedin, designation=body.designation,)
         return JSONResponse(
             content={
                 "status": True,
@@ -8633,7 +8627,7 @@ async def update_professional_summary(
 class RemindLaterRequest(BaseModel):
     application_id: str
     remaind_at: str
-from brevo_mail import send_remind_later_email, send_password_reset_email
+from brevo_mail import send_remind_later_email, send_password_reset_email, notify_admins_for_new_lead
 @app.post("/remind-later/")
 async def remind_me_later(
     request: RemindLaterRequest,
@@ -10661,6 +10655,41 @@ async def get_job_candidates(
         error_msg = f"Error retrieving job candidates: {str(e)}"
         logger.error(error_msg, exc_info=True)
         raise HTTPException(status_code=500, detail=error_msg)
+class ApplicationSeenByManagerRequest(BaseModel):
+    application_id: str
+    seen:bool
+@app.post("/application-seen-by-manager/")
+async def application_seen_by_manager(
+    body: ApplicationSeenByManagerRequest,
+):
+    application= body.application_id
+    seen= body.seen
+    """
+    Mark an application as seen or unseen by the hiring manager.
+    """
+    try:
+        collection = db["resume_profiles"]
+        application_doc = await collection.find_one({"_id": ObjectId(application)})
+        if not application_doc:
+            return JSONResponse(
+                content={"status": False, "message": "Application not found"},
+                status_code=404
+            )
+        await collection.update_one(
+            {"_id": ObjectId(application)},
+            {"$set": {"seen_by_manager": seen, "seen_at": datetime.utcnow()}}
+        )
+        return JSONResponse(
+            content={"status": True, "message": f"Application marked as {'seen' if seen else 'unseen'}"},
+            status_code=200 
+        )
+    except Exception as e:  
+        error_msg = f"Error updating application seen status: {str(e)}"
+        logger.error(error_msg, exc_info=True)
+        return JSONResponse(
+            status_code=500,
+            content={"status": False, "message": error_msg}
+        )
 ######################################################################
 if __name__ == "__main__":
     logger.info("Starting FastAPI application")
