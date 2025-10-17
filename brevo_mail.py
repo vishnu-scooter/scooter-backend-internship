@@ -98,3 +98,80 @@ async def send_password_reset_email(user_email: str, otp:str, user_name: str):
     except ApiException as e:
         print("Exception when sending email:", e)
        
+
+async def notify_admins_for_new_lead(name: str, companyEmail: str, phone: str, companyName: str, designation: str,linkedin: str,query: str):
+    """
+    Sends a notification email to admins when a new lead is created via Contact Us form.
+    """
+    configuration = sib_api_v3_sdk.Configuration()
+    configuration.api_key['api-key'] = os.getenv("BREVO_API_KEY")
+    api_instance = sib_api_v3_sdk.TransactionalEmailsApi(sib_api_v3_sdk.ApiClient(configuration))
+
+    # Build the email
+    send_smtp_email = sib_api_v3_sdk.SendSmtpEmail(
+        to=[
+            {"email": "kartik@thescooter.ai", "name": "Karthik"},
+            #{"email": "ketaki@thescooter.ai", "name": "Ketaki"}
+        ],
+        sender={"email": "internal@thescooter.ai", "name": "scooter internal"},
+        subject="Lead Alert⚠️ - New Contact Us form Submission",
+        html_content=f"""
+        <html>
+  <body style="font-family: Arial, sans-serif; background-color: #f9f9f9; padding: 20px; margin: 0;">
+    <div style="max-width: 650px; margin: auto; background-color: #ffffff; border: 1px solid #e0e0e0; border-radius: 8px; padding: 25px;">
+      
+      <h2 style="color: #333; border-bottom: 1px solid #e0e0e0; padding-bottom: 10px;">
+          New Contact Us Submission
+      </h2>
+      
+      <p style="font-size: 16px; color: #555;">
+        A new contact form has been submitted. Here are the details:
+      </p>
+      
+      <table style="width: 100%; border-collapse: collapse; margin-top: 15px;">
+        <tr>
+          <td style="padding: 8px; font-weight: bold; color: #333; width: 150px;">Name:</td>
+          <td style="padding: 8px; color: #555;">{name}</td>
+        </tr>
+        <tr>
+          <td style="padding: 8px; font-weight: bold; color: #333;">Email:</td>
+          <td style="padding: 8px; color: #555;">{companyEmail}</td>
+        </tr>
+        <tr>
+          <td style="padding: 8px; font-weight: bold; color: #333;">Phone:</td>
+          <td style="padding: 8px; color: #555;">{phone}</td>
+        </tr>
+        <tr>
+          <td style="padding: 8px; font-weight: bold; color: #333;">Company:</td>
+          <td style="padding: 8px; color: #555;">{companyName}</td>
+        </tr>
+        <tr>
+          <td style="padding: 8px; font-weight: bold; color: #333;">Designation:</td>
+          <td style="padding: 8px; color: #555;">{designation}</td>
+        </tr>
+        <tr>
+          <td style="padding: 8px; font-weight: bold; color: #333;">LinkedIn:</td>
+          <td style="padding: 8px; color: #555;">{linkedin}</td>
+        </tr>
+        <tr>
+          <td style="padding: 8px; font-weight: bold; color: #333; vertical-align: top;">Query:</td>
+          <td style="padding: 8px; color: #555;">{query}</td>
+        </tr>
+      </table>
+      
+      <p style="font-size: 14px; color: #777; margin-top: 25px;">
+        This is an automated notification. Please follow up promptly with the user.
+      </p>
+      
+    </div>
+  </body>
+</html>
+
+        """
+    )
+
+    try:
+        response = api_instance.send_transac_email(send_smtp_email)
+       
+    except ApiException as e:
+        print("Exception when sending email:", e)
