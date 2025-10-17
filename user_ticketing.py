@@ -1,14 +1,10 @@
-from fastapi import FastAPI, HTTPException, UploadFile, File, Form
-from fastapi.responses import JSONResponse
-from pydantic import EmailStr
-from motor.motor_asyncio import AsyncIOMotorClient
+from fastapi import HTTPException, UploadFile, File, Form
 from azure.storage.blob.aio import BlobServiceClient
 from azure.core.exceptions import ResourceExistsError
 from datetime import datetime, timezone
 import os, logging, random, string
-from typing import Optional
-import requests
-import uvicorn
+import sib_api_v3_sdk
+from sib_api_v3_sdk.rest import ApiException
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -21,13 +17,9 @@ logging.basicConfig(
 )
 
 logger = logging.getLogger(__name__)
-app = FastAPI()
 
-# MongoDB connection
-MONGO_URI = os.getenv("MONGODB_URL")
-client = AsyncIOMotorClient(MONGO_URI)
-db = client["scooter_ai_db"]
-collection = db["user-ticket"]
+
+
 # Azure settings (replace with your actual settings or use env variables)
 AZURE_STORAGE_CONNECTION_STRING = os.getenv("AZURE_STORAGE_CONNECTION_STRING")
 AZURE_STORAGE_SCREENSHOT_CONTAINER_NAME = os.getenv("AZURE_STORAGE_SCREENSHOT_CONTAINER_NAME", "user-screenshots")
@@ -35,63 +27,106 @@ AZURE_STORAGE_SCREENSHOT_CONTAINER_NAME = os.getenv("AZURE_STORAGE_SCREENSHOT_CO
 def generate_short_reference(length=8):
     return ''.join(random.choices(string.ascii_uppercase + string.digits, k=length))
 
-# Mailgun email sender
-def send_support_conformation_email(to_email: str, reference_number: str, name: str):
+# Support Confirmation Email
+# Support Confirmation Email
+async def send_support_conformation_email(to_email: str, reference_number: str, name: str):
+    configuration = sib_api_v3_sdk.Configuration()
+    configuration.api_key['api-key'] = os.getenv("BREVO_API_KEY")
+
+    api_instance = sib_api_v3_sdk.TransactionalEmailsApi(sib_api_v3_sdk.ApiClient(configuration))
+
+    subject = "Support Ticket Created"
+    html_content = f"""
+    <html>
+      <body style="font-family: Arial, sans-serif; background-color: #ffffff; padding: 20px;">
+        <div style="max-width: 600px; margin: auto; border: 1px solid #e0e0e0; border-radius: 8px; padding: 25px;">
+          <h2 style="color: #333;">Dear {name},</h2>
+          <p style="font-size: 16px; color: #555;">
+            Thank you for contacting Scooter AI Support.
+          </p>
+          <p style="font-size: 16px; color: #555;">
+            We’ve received your request and have created a support ticket with the reference number: 
+          </p>
+          <h3 style="color: #0078D7;">{reference_number}</h3>
+          <p style="font-size: 16px; color: #555;">
+            Our team is actively reviewing your issue and working to resolve it as quickly as possible.
+          </p>
+          <p style="font-size: 16px; color: #555;">
+            If you need to follow up, please mention this reference number in any future communication to help us assist you more efficiently.
+          </p>
+          <p style="font-size: 16px; color: #555;">
+            We sincerely apologize for any inconvenience caused and appreciate your patience during this time. We’ll notify you as soon as your query has been resolved.
+          </p>
+          <p style="font-size: 16px; color: #555; margin-top: 30px;">
+            Best regards,<br />
+            <strong>Scooter AI Support Team</strong>
+          </p>
+        </div>
+      </body>
+    </html>
+    """
+
+    send_smtp_email = sib_api_v3_sdk.SendSmtpEmail(
+        to=[{"email": to_email, "name": name}],
+        sender={"email": "support@thescooter.ai", "name": "ScooterAI Support"},
+        subject=subject,
+        html_content=html_content,
+    )
+
     try:
-        response = requests.post(
-            "https://api.mailgun.net/v3/thescooter.ai/messages",
-            auth=("api", os.getenv('mailgun_api', '6fa54e2c5c1970f59575773a5e8dafdc-812b35f5-c046da19')),
-            data={
-                "from": "ScooterAI Support <support@thescooter.ai>",
-                "to": to_email,
-                "subject": "Support Ticket Created",
-                "text": f"""Dear {name},
-
-Thank you for contacting Scooter AI Support.
-
-We’ve received your request and have created a support ticket with the reference number: {reference_number}. Our team is actively reviewing your issue and working to resolve it as quickly as possible.
-
-If you need to follow up, please mention this reference number in any future communication to help us assist you more efficiently.
-
-We sincerely apologize for any inconvenience caused and appreciate your patience during this time. We’ll notify you as soon as your query has been resolved.
-
-Best regards,  
-Scooter AI Support Team"""
-            }
-        )
-        logger.info(f"Email sent to {to_email} with status {response.status_code}")
-        return response.status_code == 200
-    except Exception as e:
-        logger.error(f"Failed to send email to {to_email}: {e}")
+        response = api_instance.send_transac_email(send_smtp_email)
+        logger.info(f"Email sent to {to_email} via Brevo, response: {response}")
+        return True
+    except ApiException as e:
+        logger.error(f"Failed to send Brevo email to {to_email}: {e}")
         return False
 
-def notify_developer_of_new_ticket(ticket: dict):
+
+# Developer Notification Email
+async def notify_developer_of_new_ticket(ticket: dict):
+    configuration = sib_api_v3_sdk.Configuration()
+    configuration.api_key['api-key'] = os.getenv("BREVO_API_KEY")
+
+    api_instance = sib_api_v3_sdk.TransactionalEmailsApi(sib_api_v3_sdk.ApiClient(configuration))
+
+    subject = f"[New Support Ticket] {ticket.get('reference_number', 'N/A')}"
+    html_content = f"""
+    <html>
+      <body style="font-family: Arial, sans-serif; background-color: #ffffff; padding: 20px;">
+        <div style="max-width: 600px; margin: auto; border: 1px solid #e0e0e0; border-radius: 8px; padding: 25px;">
+          <h2 style="color: #333;">Dear developer,</h2>
+          <p style="font-size: 16px; color: #555;">New support ticket has been received. Details below:</p>
+          <ul style="font-size: 16px; color: #555; line-height: 1.6;">
+            <li><strong>Reference Number:</strong> {ticket.get('reference_number')}</li>
+            <li><strong>Name:</strong> {ticket.get('name')}</li>
+            <li><strong>Email:</strong> {ticket.get('email')}</li>
+            <li><strong>Phone:</strong> {ticket.get('phonenumber')}</li>
+            <li><strong>Description:</strong> {ticket.get('description')}</li>
+            <li><strong>Screenshot URL:</strong> {ticket.get('screenshot_url', 'Not provided')}</li>
+            <li><strong>Created At:</strong> {ticket.get('created_at')}</li>
+          </ul>
+        </div>
+      </body>
+    </html>
+    """
+
+    send_smtp_email = sib_api_v3_sdk.SendSmtpEmail(
+        to=[
+            {"email": "vishnu@thescooter.ai"},
+            {"email": "usman@thescooter.ai"},
+            {"email": "priyanshu@thescooter.ai"},
+        ],
+        sender={"email": "support@thescooter.ai", "name": "ScooterAI Automation"},
+        subject=subject,
+        html_content=html_content,
+    )
+
     try:
-        response = requests.post(
-            "https://api.mailgun.net/v3/thescooter.ai/messages",
-            auth=("api", os.getenv('mailgun_api', '6fa54e2c5c1970f59575773a5e8dafdc-812b35f5-c046da19')),
-            data={
-                "from": "ScooterAI automation <support@thescooter.ai>",
-                "to": "vishnu@thescooter.ai,usman@thescooter.ai,priyanshu@thescooter.ai",  # Replace with your actual dev/support email
-                "subject": f"[New Support Ticket] {ticket.get('reference_number', 'N/A')}",
-                "text": f""" Dear developer New support ticket has been received.
-
-Reference Number: {ticket.get('reference_number')}
-Name: {ticket.get('name')}
-Email: {ticket.get('email')}
-Phone: {ticket.get('phonenumber')}
-Description:
-{ticket.get('description')}
-screenshot_url: {ticket.get('screenshot_url', 'Not provided')}
-Created At: {ticket.get('created_at')}
-
-"""
-            }
-        )
-        logger.info(f"Developer notification sent for ticket {ticket.get('reference_number')}, status {response.status_code}")
-        return response.status_code == 200
-    except Exception as e:
-        logger.error(f"Failed to notify developer for ticket {ticket.get('reference_number')}: {e}")
+        response = api_instance.send_transac_email(send_smtp_email)
+        logger.info(f"Developer notification sent for ticket {ticket.get('reference_number')}, response: {response}")
+        return True
+    except ApiException as e:
+        logger.error(f"Failed to notify developer via Brevo for ticket {ticket.get('reference_number')}: {e}")
         return False
 
 async def upload_to_blob_storage_screenshot(file: UploadFile, reference_number: str) -> str:
@@ -116,46 +151,4 @@ async def upload_to_blob_storage_screenshot(file: UploadFile, reference_number: 
         logger.error(f"Screenshot upload failed: {e}")
         raise HTTPException(status_code=500, detail="Screenshot upload failed.")
 
-@app.post("/submit-ticket/")
-async def submit_ticket(
-    name: str = Form(...),
-    email: EmailStr = Form(...),
-    phonenumber: str = Form(...),
-    description: str = Form(...),
-    screenshot: Optional[UploadFile] = File(None)
-):
-    try:
-        reference_number = generate_short_reference()
-        created_at = datetime.now(timezone.utc).isoformat()
 
-        ticket_dict = {
-            "name": name,
-            "email": email,
-            "phonenumber": phonenumber,
-            "description": description,
-            "reference_number": reference_number,
-            "created_at": created_at
-        }
-
-        # Upload screenshot if provided
-        if screenshot:
-            screenshot_url = await upload_to_blob_storage_screenshot(screenshot, reference_number)
-            ticket_dict["screenshot_url"] = screenshot_url
-
-        await collection.insert_one(ticket_dict)
-        notify_developer_of_new_ticket(ticket_dict)
-        send_support_conformation_email(email, reference_number, name)
-        # You can trigger your Mailgun logic here using `email` and `reference_number`
-
-        return {
-            "message": "Issue submitted successfully. Our team will contact you shortly.",
-            "reference_number": reference_number
-        }
-    except Exception as e:
-        logger.error(f"Failed to submit ticket: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-# Start app
-if __name__ == "__main__":
-    logger.info("Starting FastAPI application")
-    uvicorn.run(app, host="0.0.0.0", port=8002)
