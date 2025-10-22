@@ -10690,6 +10690,215 @@ async def application_seen_by_manager(
             status_code=500,
             content={"status": False, "message": error_msg}
         )
+
+class GoogleLoginRequest(BaseModel):
+    email: str
+    google_id: str
+    name: str
+    role: str  # "candidate", "manager", or "admin"
+
+
+@app.post("/login-with-google/")
+async def login_with_google(payload: GoogleLoginRequest):
+    role = payload.role.lower()
+
+    # --- Role → Collection mapping ---
+    collection_map = {
+        "candidate": "user_accounts",
+        "manager": "hiring_managers",
+        "admin": "admin_accounts"
+    }
+
+    if role not in collection_map:
+        raise HTTPException(status_code=400, detail="Invalid role provided")
+
+    collection_name = collection_map[role]
+    collection = db[collection_name]
+
+    # --- Check if user already exists ---
+    user = await collection.find_one({"email": payload.email})
+
+    if user:
+        # Add Google ID if missing
+        if not user.get("google_id"):
+            await collection.update_one(
+                {"_id": user["_id"]},
+                {"$set": {"google_id": payload.google_id, "updated_at": datetime.utcnow()}}
+            )
+        # Validate Google ID if present
+        elif user["google_id"] != payload.google_id:
+            raise HTTPException(status_code=401, detail="Google ID mismatch")
+
+        user_id = str(user["_id"])
+    else:
+        # --- Create new user record ---
+        new_user = {
+            "email": payload.email,
+            "google_id": payload.google_id,
+            "name": payload.name,
+            "created_at": datetime.utcnow(),
+            "updated_at": datetime.utcnow()
+        }
+        result = await collection.insert_one(new_user)
+        user_id = str(result.inserted_id)
+        user = new_user
+
+    # --- Generate tokens ---
+    access_token = create_access_token(user_id, role=role)
+    refresh_token = create_refresh_token(user_id, role=role)
+
+    await db["refresh_tokens"].delete_many({"user_id": user_id, "user_type": role})
+    await save_refresh_token(user_id, user_type=role, refresh_token=refresh_token)
+
+    # --- Role-specific responses ---
+    if role == "candidate":
+        resume_collection = db["resume_profiles"]
+        job_collection = db["job_roles"]
+
+        applications_cursor = resume_collection.find({"user_id": user_id})
+        applications = await applications_cursor.to_list(length=None)
+
+        # Collect job_ids and fetch job details
+        job_ids = list({app.get("job_id") for app in applications if app.get("job_id")})
+        jobs = []
+        if job_ids:
+            jobs_cursor = job_collection.find(
+                {"_id": {"$in": [ObjectId(jid) for jid in job_ids]}}
+            )
+            jobs = await jobs_cursor.to_list(length=None)
+
+        # Map job_id → job title
+        job_map = {
+            str(job["_id"]): job.get("basicInfo", {}).get("jobTitle", "Unknown") for job in jobs
+        }
+
+        # Build application history
+        application_history = []
+        for app in applications:
+            job_id = app.get("job_id")
+            job_role_name = job_map.get(job_id, "Unknown")
+            application_history.append({
+                "application_id": str(app["_id"]),
+                "job_role_name": job_role_name,
+                "job_id": job_id,
+                "application_status": app.get("application_status", ""),
+                "video_interview_start": app.get("video_interview_start", False),
+                "video_email_sent": app.get("video_email_sent", False),
+                "audio_interview_status": app.get("audio_interview", False),
+            })
+
+        return {
+            "status": True,
+            "message": "Login successful",
+            "data": {
+                "role": role,
+                "candidate_id": user_id,
+                "name": user.get("name"),
+                "email": user.get("email"),
+                "application_history": application_history
+            },
+            "access_token": access_token,
+            "refresh_token": refresh_token,
+            "token_type": "bearer"
+        }
+
+    # --- Manager Response ---
+    elif role == "manager":
+        return {
+            "status": True,
+            "message": "Login successful",
+            "data": {
+                "role": role,
+                "manager_id": user_id,
+                "first_name": user.get("first_name", ""),
+                "last_name": user.get("last_name", ""),
+                "email": user.get("email")
+            },
+            "access_token": access_token,
+            "refresh_token": refresh_token,
+            "token_type": "bearer"
+        }
+
+    # --- Admin Response ---
+    elif role == "admin":
+        return {
+            "status": True,
+            "message": "Login successful",
+            "data": {
+                "role": role,
+                "admin_id": user_id,
+                "first_name": user.get("first_name", ""),
+                "last_name": user.get("last_name", ""),
+                "email": user.get("email")
+            },
+            "access_token": access_token,
+            "refresh_token": refresh_token,
+            "token_type": "bearer"
+        }
+
+class UpdateProfileRequest(BaseModel):
+    #id: str = Field(..., description="MongoDB ObjectId of the user")
+    #role: str = Field(..., description="Role of the user (candidate / hiring_manager / admin)")
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    name: Optional[str] = None
+    phone_number: Optional[str] = None
+    candidate_source: Optional[str] = None
+    phone: Optional[str] = None
+    linked_in: Optional[str] = None
+
+@app.post("/update-profile/")
+async def update_profile(payload: UpdateProfileRequest, authorization: str = Header(...)):
+    try:
+        # Validate ObjectId
+        try:
+            #user_id = ObjectId(payload.id)
+            current_user = await get_current_user(authorization)
+        except HTTPException as e:
+            return JSONResponse(
+                content={"status": False, "message": "Invalid or expired token"},
+                status_code=401
+            )
+        user_id=current_user["user_id"]
+        logger.info(f"Updating profile for user_id: {user_id}")
+        # Determine collection name
+        role = current_user["role"]
+        logger.info(f"User role: {role}")
+        if role == "candidate":
+            collection = db["user_accounts"]
+        elif role == "manager":
+            collection = db["hiring_managers"]
+        elif role == "superadmin":
+            collection = db["admin_accounts"]
+        else:
+            raise HTTPException(status_code=400, detail="Invalid role type")
+
+        # Build update dict from non-null fields
+        update_fields = {
+            k: v for k, v in payload.dict().items()
+            if v is not None and k not in ("id", "role")
+        }
+
+        if not update_fields:
+            raise HTTPException(status_code=400, detail="No fields to update")
+
+        # Perform update
+        result = await collection.update_one({"_id": ObjectId(user_id)}, {"$set": update_fields})
+
+        if result.matched_count == 0:
+            raise HTTPException(status_code=404, detail="User not found")
+
+        return {
+            "status": True,
+            "message": "Profile updated successfully",
+            "updated_fields": update_fields
+        }
+
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 ######################################################################
 if __name__ == "__main__":
     logger.info("Starting FastAPI application")
