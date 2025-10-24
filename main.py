@@ -10691,12 +10691,12 @@ async def application_seen_by_manager(
             content={"status": False, "message": error_msg}
         )
 
-class GoogleLoginRequest(BaseModel):
-    email: str
-    google_id: str
-    name: str
-    role: str  # "candidate", "manager", or "admin"
 
+class GoogleLoginRequest(BaseModel):
+    token: str  # Google ID token from frontend
+    role: str   # "candidate", "manager", or "admin"
+
+from auth_utils import verify_google_token_with_library
 
 @app.post("/login-with-google/")
 async def login_with_google(payload: GoogleLoginRequest):
@@ -10712,31 +10712,36 @@ async def login_with_google(payload: GoogleLoginRequest):
     if role not in collection_map:
         raise HTTPException(status_code=400, detail="Invalid role provided")
 
-    collection_name = collection_map[role]
-    collection = db[collection_name]
+    collection = db[collection_map[role]]
 
-    # --- Check if user already exists ---
-    user = await collection.find_one({"email": payload.email})
+    # --- Step 1: Verify Google Token using your existing function ---
+    try:
+        id_info = verify_google_token_with_library(payload.token)
+    except Exception as e:
+        raise HTTPException(status_code=401, detail=f"Invalid Google token: {str(e)}")
+
+    # --- Step 2: Extract fields from verified token ---
+    google_id = id_info["sub"]
+    email = id_info.get("email")
+    name = id_info.get("name")
+    picture = id_info.get("picture", "")
+    email_verified = id_info.get("email_verified", False)
+
+    if not email_verified:
+        raise HTTPException(status_code=400, detail="Email not verified by Google")
+
+    # --- Step 3: User handling ---
+    user = await collection.find_one({"email": email})
     new_signup = False
 
     if user:
-        # Add Google ID if missing
-        if not user.get("google_id"):
-            await collection.update_one(
-                {"_id": user["_id"]},
-                {"$set": {"google_id": payload.google_id, "updated_at": datetime.utcnow()}}
-            )
-        # Validate Google ID if present
-        elif user["google_id"] != payload.google_id:
-            raise HTTPException(status_code=401, detail="Google ID mismatch")
-
         user_id = str(user["_id"])
     else:
-        # --- Create new user record ---
         new_user = {
-            "email": payload.email,
-            "google_id": payload.google_id,
-            "name": payload.name,
+            "email": email,
+            #"google_id": google_id,
+            "name": name,
+            "profile_picture": picture,
             "created_at": datetime.utcnow(),
             "updated_at": datetime.utcnow()
         }
@@ -10745,14 +10750,14 @@ async def login_with_google(payload: GoogleLoginRequest):
         user = new_user
         new_signup = True
 
-    # --- Generate tokens ---
+    # --- Step 4: Generate tokens ---
     access_token = create_access_token(user_id, role=role)
     refresh_token = create_refresh_token(user_id, role=role)
 
     await db["refresh_tokens"].delete_many({"user_id": user_id, "user_type": role})
     await save_refresh_token(user_id, user_type=role, refresh_token=refresh_token)
 
-    # --- Role-specific responses ---
+    # --- Step 5: Role-specific responses ---
     if role == "candidate":
         resume_collection = db["resume_profiles"]
         job_collection = db["job_roles"]
@@ -10760,7 +10765,6 @@ async def login_with_google(payload: GoogleLoginRequest):
         applications_cursor = resume_collection.find({"user_id": user_id})
         applications = await applications_cursor.to_list(length=None)
 
-        # Collect job_ids and fetch job details
         job_ids = list({app.get("job_id") for app in applications if app.get("job_id")})
         jobs = []
         if job_ids:
@@ -10769,12 +10773,10 @@ async def login_with_google(payload: GoogleLoginRequest):
             )
             jobs = await jobs_cursor.to_list(length=None)
 
-        # Map job_id → job title
         job_map = {
             str(job["_id"]): job.get("basicInfo", {}).get("jobTitle", "Unknown") for job in jobs
         }
 
-        # Build application history
         application_history = []
         for app in applications:
             job_id = app.get("job_id")
@@ -10798,6 +10800,7 @@ async def login_with_google(payload: GoogleLoginRequest):
                 "candidate_id": user_id,
                 "name": user.get("name"),
                 "email": user.get("email"),
+                "profile_picture": user.get("picture", ""),
                 "application_history": application_history
             },
             "access_token": access_token,
@@ -10805,7 +10808,6 @@ async def login_with_google(payload: GoogleLoginRequest):
             "token_type": "bearer"
         }
 
-    # --- Manager Response ---
     elif role == "manager":
         return {
             "status": True,
@@ -10816,14 +10818,14 @@ async def login_with_google(payload: GoogleLoginRequest):
                 "manager_id": user_id,
                 "first_name": user.get("first_name", ""),
                 "last_name": user.get("last_name", ""),
-                "email": user.get("email")
+                "email": user.get("email"),
+                "profile_picture": user.get("picture", "")
             },
             "access_token": access_token,
             "refresh_token": refresh_token,
             "token_type": "bearer"
         }
 
-    # --- Admin Response ---
     elif role == "admin":
         return {
             "status": True,
@@ -10834,7 +10836,8 @@ async def login_with_google(payload: GoogleLoginRequest):
                 "admin_id": user_id,
                 "first_name": user.get("first_name", ""),
                 "last_name": user.get("last_name", ""),
-                "email": user.get("email")
+                "email": user.get("email"),
+                "profile_picture": user.get("picture", "")
             },
             "access_token": access_token,
             "refresh_token": refresh_token,
