@@ -10717,6 +10717,7 @@ async def login_with_google(payload: GoogleLoginRequest):
 
     # --- Check if user already exists ---
     user = await collection.find_one({"email": payload.email})
+    new_signup = False
 
     if user:
         # Add Google ID if missing
@@ -10742,6 +10743,7 @@ async def login_with_google(payload: GoogleLoginRequest):
         result = await collection.insert_one(new_user)
         user_id = str(result.inserted_id)
         user = new_user
+        new_signup = True
 
     # --- Generate tokens ---
     access_token = create_access_token(user_id, role=role)
@@ -10790,6 +10792,7 @@ async def login_with_google(payload: GoogleLoginRequest):
         return {
             "status": True,
             "message": "Login successful",
+            "new_signup": new_signup,
             "data": {
                 "role": role,
                 "candidate_id": user_id,
@@ -10807,6 +10810,7 @@ async def login_with_google(payload: GoogleLoginRequest):
         return {
             "status": True,
             "message": "Login successful",
+            "new_signup": new_signup,
             "data": {
                 "role": role,
                 "manager_id": user_id,
@@ -10824,6 +10828,7 @@ async def login_with_google(payload: GoogleLoginRequest):
         return {
             "status": True,
             "message": "Login successful",
+            "new_signup": new_signup,
             "data": {
                 "role": role,
                 "admin_id": user_id,
