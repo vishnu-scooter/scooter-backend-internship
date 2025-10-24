@@ -5,7 +5,9 @@ from pydantic import BaseModel
 from datetime import datetime
 from typing import Optional
 from motor.motor_asyncio import AsyncIOMotorClient
-
+import requests
+from google.auth.transport import requests
+from google.oauth2 import id_token
 from fastapi import Header, HTTPException
 load_dotenv()
 
@@ -14,6 +16,7 @@ REFRESH_SECRET = os.getenv("JWT_REFRESH_SECRET")
 ALGORITHM = os.getenv("JWT_ALGORITHM", "HS256")
 ACCESS_EXPIRE_MINUTES = int(os.getenv("JWT_ACCESS_EXPIRE_MINUTES", 60))
 REFRESH_EXPIRE_DAYS = int(os.getenv("JWT_REFRESH_EXPIRE_DAYS", 7))
+YOUR_GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
 
 # MongoDB connection
 MONGODB_URL = os.getenv("MONGODB_URL")
@@ -77,3 +80,23 @@ async def get_current_user(authorization: str = Header(...)):
         raise HTTPException(status_code=401, detail="Token expired")
     except jwt.InvalidTokenError:
         raise HTTPException(status_code=401, detail="Invalid or tampered token")
+
+    
+
+def verify_google_token_with_library(id_token_string):
+    """
+    Verify Google ID token using Google's official library
+    """
+    try:
+        # Verify the token
+        idinfo = id_token.verify_oauth2_token(
+            id_token_string, 
+            requests.Request(), 
+            YOUR_GOOGLE_CLIENT_ID
+        )
+        
+        return idinfo
+        
+    except ValueError as e:
+        return False, f"Invalid token: {str(e)}"
+    
