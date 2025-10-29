@@ -9852,7 +9852,11 @@ async def apply_job(
         status_code=400,
         content={
             "status": False,
-            "message": "Complete your profile with resume and basic information before applying."
+            "message": "Complete your profile with resume and basic information before applying.",
+            "is_profile_complete":{
+                "resume_uploaded": bool(user_doc.get("resume_text")),
+                "profile_information": bool(user_doc.get("basic_information")),
+            }
         }
     )
         # --- Step 4: Generate job fit assessment ---
