@@ -8246,6 +8246,10 @@ async def candidate_login(body: CandidateLoginRequest):
                 "email": candidate["email"],
                 "application_history": application_history
             },
+            "is_profile_complete":{
+                "resume_uploaded": bool(candidate.get("resume_text")),
+                "profile_information": bool(candidate.get("basic_information")),
+            },
             "access_token": access_token,
             "refresh_token": refresh_token,
             "token_type": "bearer"
@@ -9843,6 +9847,14 @@ async def apply_job(
                     status_code=400,
                     content={"status": False, "applied":True,"message": "You already have an active application for this job"},
                 )
+        if not resume_text or not user_doc.get("basic_information"):
+            return JSONResponse(
+        status_code=400,
+        content={
+            "status": False,
+            "message": "Complete your profile with resume and basic information before applying."
+        }
+    )
         # --- Step 4: Generate job fit assessment ---
         job_fit_assessment = await generate_job_fit_summary(resume_text, job_description)
 
@@ -10811,6 +10823,10 @@ async def login_with_google(payload: GoogleLoginRequest):
                 "email": user.get("email"),
                 "profile_picture": user.get("profile_picture", ""),
                 "application_history": application_history
+            },
+            "is_profile_complete":{
+                "resume_uploaded": bool(user.get("resume_text")),
+                "profile_information": bool(user.get("basic_information")),
             },
             "access_token": access_token,
             "refresh_token": refresh_token,
