@@ -2213,6 +2213,7 @@ async def evaluate_intervieww(session_id: str, answers: list, resume_text: str, 
     total_skill_score = 0
     total_trait_score = 0
     valid_evaluations = 0
+    total_question_score = 0
 
     for answer in regular_answers:
         q_num = answer["question_number"]
@@ -2236,7 +2237,8 @@ async def evaluate_intervieww(session_id: str, answers: list, resume_text: str, 
                 role,
                 evaluation_rubric.get(evaluation_type)
             )
-
+            logger.info(f"Evaluating Q{q_num} with type {evaluation_type}")
+            logger.info(f"Evaluation for Q{q_num}: {evaluation}")   
             question_evaluation = {
                 "question_number": q_num,
                 "question": question_text,
@@ -2246,6 +2248,7 @@ async def evaluate_intervieww(session_id: str, answers: list, resume_text: str, 
                 "skill_reasoning": evaluation.get("skill_reasoning", ""),
                 "trait_reasoning": evaluation.get("trait_reasoning", ""),
                 "has_signal": evaluation.get("has_signal", True),
+                "question_score": evaluation.get("question_score", 0),
                 "timestamp": answer.get("timestamp", datetime.utcnow())
             }
             evaluated_questions.append(question_evaluation)
@@ -2253,6 +2256,7 @@ async def evaluate_intervieww(session_id: str, answers: list, resume_text: str, 
             if evaluation.get("has_signal", True):
                 total_skill_score += evaluation.get("skill_score", 0)
                 total_trait_score += evaluation.get("trait_score", 0)
+                total_question_score += evaluation.get("question_score", 0)
                 valid_evaluations += 1
         else:
             question_evaluation = {
@@ -2272,7 +2276,7 @@ async def evaluate_intervieww(session_id: str, answers: list, resume_text: str, 
     avg_trait_score = total_trait_score / valid_evaluations if valid_evaluations > 0 else 0
 
     summary = await generate_interview_summary(
-        evaluated_questions, avg_skill_score, avg_trait_score, resume_text, role, job_config
+        evaluated_questions, avg_skill_score, avg_trait_score, resume_text, role, job_config,total_question_score
     )
     
     evaluation_result = {
@@ -2282,6 +2286,7 @@ async def evaluate_intervieww(session_id: str, answers: list, resume_text: str, 
             "average_skill_score": round(avg_skill_score, 2),
             "average_trait_score": round(avg_trait_score, 2),
             "total_questions": len(interview_questions)+1,
+            "total_question_score": round(total_question_score, 0),
             "questions_with_signal": valid_evaluations,
             "questions_answered": len(regular_answers)
         },
@@ -2324,15 +2329,17 @@ async def evaluate_question_openai(question: str, answer: str, question_number: 
     {{
         "skill_score": [1-5 or 0 for no signal],
         "trait_score": [1-5 or 0 for no signal],
+        "question_score": [0-5 based on rubric scoring_logic]
         "skill_reasoning": "Brief explanation of skill score based on the rubric's competencies and the answer.",
         "trait_reasoning": "Brief explanation of trait score based on the rubric's characteristics and the answer.",
-        "has_signal": [true/false]
+        "has_signal": [true/false],
+        
     }}
 
     Focus on practical ability, real-world experience, and the mindset needed for success in this role.
     When determining scores, prioritize adherence to the structured 'scoring_logic' within the rubric.
     """
-
+    logger.info(f"Evaluating Question {question_number} with rubric: {rubric_str}")
     try:
         async with aiohttp.ClientSession() as session:
             async with session.post(
@@ -2372,6 +2379,7 @@ async def evaluate_question_openai(question: str, answer: str, question_number: 
                     return {
                         "skill_score": skill_score,
                         "trait_score": trait_score,
+                        "question_score": evaluation.get("question_score", 0),
                         "skill_reasoning": evaluation.get("skill_reasoning", ""),
                         "trait_reasoning": evaluation.get("trait_reasoning", ""),
                         "has_signal": has_signal
@@ -2386,13 +2394,14 @@ async def evaluate_question_openai(question: str, answer: str, question_number: 
         return {
             "skill_score": 0,
             "trait_score": 0,
+            "question_score": 0,
             "skill_reasoning": f"Evaluation error: {e}",
             "trait_reasoning": f"Evaluation error: {e}",
             "has_signal": False
         }
 
 
-async def generate_interview_summary(evaluated_questions: list, avg_skill_score: float, avg_trait_score: float, resume_text: str, role: str, job_config: dict):
+async def generate_interview_summary(evaluated_questions: list, avg_skill_score: float, avg_trait_score: float, resume_text: str, role: str, job_config: dict,total_question_score: float):
     """
     Generate overall summary and recommendation based on all evaluations and job-specific decision thresholds.
     """
@@ -2408,8 +2417,8 @@ async def generate_interview_summary(evaluated_questions: list, avg_skill_score:
     total_skill_score = sum(eq['skill_score'] for eq in evaluated_questions if eq['has_signal'])
     total_trait_score_sum = sum(eq['trait_score'] for eq in evaluated_questions if eq['has_signal'])
 
-    total_overall_score = total_skill_score + total_trait_score_sum
-
+    #total_overall_score = total_skill_score + total_trait_score_sum
+    total_overall_score=total_question_score
     calculated_recommendation = "Maybe"
     calculated_reasoning = "Based on raw scores."
 
@@ -2431,7 +2440,7 @@ async def generate_interview_summary(evaluated_questions: list, avg_skill_score:
     - Average Trait Score: {avg_trait_score:.2f}/5 (This is an average of trait scores per question)
     - Total Skill Score (sum of all valid skill scores): {total_skill_score}
     - Total Trait Score (sum of all valid trait scores from questions): {total_trait_score_sum}
-    - Combined Total Score: {total_overall_score}
+    - Total Interview Score: {total_overall_score}
 
     Resume Context: {resume_text[:800]}...
 
@@ -2462,7 +2471,7 @@ async def generate_interview_summary(evaluated_questions: list, avg_skill_score:
 
     **Recommendation:** [Strong Hire/Maybe/Weak/Reject]
 
-    **Reasoning:** [1-2 sentences explaining the recommendation based on overall score and specific observations from the interview.]
+    **Reasoning:** [1-2 sentences explaining the recommendation based on Total Interview Score and specific observations from the interview.]
     """
 
     try:
@@ -10800,7 +10809,7 @@ async def login_with_google(payload: GoogleLoginRequest):
                 "candidate_id": user_id,
                 "name": user.get("name"),
                 "email": user.get("email"),
-                "profile_picture": user.get("picture", ""),
+                "profile_picture": user.get("profile_picture", ""),
                 "application_history": application_history
             },
             "access_token": access_token,
@@ -10819,7 +10828,7 @@ async def login_with_google(payload: GoogleLoginRequest):
                 "first_name": user.get("first_name", ""),
                 "last_name": user.get("last_name", ""),
                 "email": user.get("email"),
-                "profile_picture": user.get("picture", "")
+                "profile_picture": user.get("profile_picture", "")
             },
             "access_token": access_token,
             "refresh_token": refresh_token,
@@ -10837,7 +10846,7 @@ async def login_with_google(payload: GoogleLoginRequest):
                 "first_name": user.get("first_name", ""),
                 "last_name": user.get("last_name", ""),
                 "email": user.get("email"),
-                "profile_picture": user.get("picture", "")
+                "profile_picture": user.get("profile_picture", "")
             },
             "access_token": access_token,
             "refresh_token": refresh_token,

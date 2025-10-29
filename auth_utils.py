@@ -94,7 +94,6 @@ def verify_google_token_with_library(id_token_string):
             requests.Request(), 
             YOUR_GOOGLE_CLIENT_ID
         )
-        
         return idinfo
         
     except ValueError as e:

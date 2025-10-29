@@ -8,6 +8,7 @@ JOB_ID_ZENOTI_SALES_DEVELOPMENT_REPRESENTATIVE="686e6a547bbea9491c14e165"
 JOB_ID_CLICKPOST="68905b9d5925cca675f43e00"
 JOB_ID_DEMO= "68dbb0e6e07e4078863fcf7b"
 JOB_ID_HTOLOOP="68e4b5e0c889a13b5d1d8891"
+JOB_ID_GERMIN8_DELHI="68fe3b80b7a77fc1cbbdc5a3"
 # TestZeus Founding BDR Configuration
 TESTZEUS_FOUNDING_BDR_CONFIG = {
     "job_id": JOB_ID_TESTZEUS_FOUNDING_BDR,
@@ -1288,7 +1289,8 @@ HTOLOOP_CONFIG = {
                     {"threshold": 2, "score": 2, "criteria": "Keeps prospect engaged, excited, and moving forward despite limitation"}
                 ]
             }
-        }
+        },
+        
     },
     "trait_rubric": {
         "Grit": {
@@ -1370,6 +1372,210 @@ HTOLOOP_CONFIG = {
         }
     ]
 }
+GERMIN8_DELHI_CONFIG = {
+    "job_id": "JOB_ID_GERMIN8",
+    "job_role": "Enterprise Sales Executive, Germin8",
+    "interview_questions": [
+        {
+            "question_number": 1,
+            "question": "Imagine you're meeting the Marketing Head of a large retail enterprise for the first time. They already use a competitor's social listening tool. How would you open the conversation to uncover pain points?",
+            "evaluation_type": "Q1_Discovery_Context"
+        },
+        {
+            "question_number": 2,
+            "question": "The client says, 'All these analytics tools are the same — why should I even look at Germin8?' How would you respond?",
+            "evaluation_type": "Q2_Value_Positioning"
+        },
+        {
+            "question_number": 3,
+            "question": "You've run a demo, but the client says, 'Your pricing is higher than our current vendor.' What would you say next?",
+            "evaluation_type": "Q3_Objection_Handling"
+        },
+        {
+            "question_number": 4,
+            "question": "Germin8 sells to international clients across North America and EMEA. Tell us about how you'd build trust and manage a deal cycle remotely with global stakeholders.",
+            "evaluation_type": "Q4_Global_Enterprise_Selling"
+        },
+        {
+            "question_number": 5,
+            "question": "Did you use AI tools while preparing or answering these questions? We can detect AI use, but we also reward smart, ethical use. Tell us how you used (or didn't use) it and why.",
+            "evaluation_type": "Q5_AI_Use_Reflection"
+        }
+    ],
+    "evaluation_rubric": {
+        "Q1_Discovery_Context": {
+            "prompt_instructions": "Evaluate empathy, curiosity, discovery skill, and ability to build trust early in a sales conversation.",
+            "max_points": 5,
+            "scoring_logic": {
+                "Overall_Discovery_Quality": [
+                    {"threshold": 0, "score": 1, "criteria": "Pushy, self-centered, or irrelevant; ignores discovery entirely; purely a pitch"},
+                    {"threshold": 1, "score": 2, "criteria": "Limited curiosity; jumps into product or features quickly; minimal empathy or understanding of client context"},
+                    {"threshold": 2, "score": 3, "criteria": "Recognizes need for discovery but uses generic phrasing ('I'd ask about their needs'); mixes selling with exploration; mechanical tone"},
+                    {"threshold": 3, "score": 4, "criteria": "Demonstrates empathy and structured discovery; asks at least one relevant question; stays client-focused but less nuanced in tone or phrasing"},
+                    {"threshold": 4, "score": 5, "criteria": "Opens with context or rapport; acknowledges current vendor without judgment; asks insightful, layered questions that show curiosity and business understanding; avoids pitching too soon; natural and conversational tone"}
+                ]
+            }
+        },
+        "Q2_Value_Positioning": {
+            "prompt_instructions": "Evaluate ability to differentiate, communicate value clearly, and persuade using reasoning.",
+            "max_points": 5,
+            "scoring_logic": {
+                "Overall_Positioning_Quality": [
+                    {"threshold": 0, "score": 1, "criteria": "Deflects or repeats the client's objection; fails to provide any meaningful reason to consider Germin8"},
+                    {"threshold": 1, "score": 2, "criteria": "Generic statements ('we are innovative,' 'better insights') without evidence or relevance"},
+                    {"threshold": 2, "score": 3, "criteria": "Explains features but not outcomes; response feels templated; little client context or impact reasoning"},
+                    {"threshold": 3, "score": 4, "criteria": "Identifies at least one key differentiator and links it to business value; lacks some depth or client linkage but persuasive overall"},
+                    {"threshold": 4, "score": 5, "criteria": "Provides clear, specific differentiators tied to measurable outcomes (e.g., accuracy, depth, ROI, speed); connects to client priorities; confident and concise; human tone"}
+                ]
+            }
+        },
+        "Q3_Objection_Handling": {
+            "prompt_instructions": "Evaluate commercial judgment, composure, and ability to reframe around value.",
+            "max_points": 5,
+            "scoring_logic": {
+                "Overall_Objection_Quality": [
+                    {"threshold": 0, "score": 1, "criteria": "Ignores objection or responds with irrelevant points"},
+                    {"threshold": 1, "score": 2, "criteria": "Defensive or apologetic; avoids answering directly or concedes on price"},
+                    {"threshold": 2, "score": 3, "criteria": "Attempts to justify cost but leans on generic statements ('we provide better service'); limited empathy or structure"},
+                    {"threshold": 3, "score": 4, "criteria": "Recognizes and addresses the concern logically; ties price to value; slightly formulaic but solid reasoning"},
+                    {"threshold": 4, "score": 5, "criteria": "Acknowledges concern gracefully; reframes discussion around ROI, quality, or long-term gains; uses consultative tone ('let's look at total impact'); shows confidence without defensiveness"}
+                ]
+            }
+        },
+        "Q4_Global_Enterprise_Selling": {
+            "prompt_instructions": "Evaluate process thinking, cross-cultural awareness, and ownership in enterprise sales.",
+            "max_points": 5,
+            "scoring_logic": {
+                "Overall_Global_Selling_Quality": [
+                    {"threshold": 0, "score": 1, "criteria": "Irrelevant or confused response; shows no understanding of enterprise/global dynamics"},
+                    {"threshold": 1, "score": 2, "criteria": "Very surface-level or repetitive; no sense of structure or global awareness"},
+                    {"threshold": 2, "score": 3, "criteria": "Understands remote sales conceptually but offers generic or incomplete process ('I'd communicate regularly')"},
+                    {"threshold": 3, "score": 4, "criteria": "Mentions coordination, communication, and follow-ups; some structure but lacks detail or cultural nuance"},
+                    {"threshold": 4, "score": 5, "criteria": "Outlines a clear, structured process (stakeholder mapping, cadence, async tools); acknowledges time zones and cultural sensitivity; gives examples or actionable methods; demonstrates ownership"}
+                ]
+            }
+        },
+        "Q5_AI_Use_Reflection": {
+            "prompt_instructions": "Evaluate integrity, self-awareness, and reflection on ethical AI use.",
+            "max_points": 5,
+            "scoring_logic": {
+                "Overall_AI_Reflection_Quality": [
+                    {"threshold": 0, "score": 1, "criteria": "Dishonest, contradictory, or indicates copying without thought"},
+                    {"threshold": 1, "score": 2, "criteria": "Avoids or minimizes the answer; lacks honesty or awareness"},
+                    {"threshold": 2, "score": 3, "criteria": "Acknowledges AI use generically ('I used ChatGPT') or denies it without elaboration; limited thoughtfulness"},
+                    {"threshold": 3, "score": 4, "criteria": "Honest and clear about AI use; mentions benefits responsibly but without much reflection"},
+                    {"threshold": 4, "score": 5, "criteria": "Transparent and thoughtful; explains exactly how AI was used to support thinking (e.g., structuring, brainstorming); emphasizes own reasoning and ethical boundaries; reflective and self-aware"}
+                ]
+            }
+        }
+    },
+    "trait_rubric": {
+        "Grit": {
+            "prompt_instructions": "Evaluated from Q1 + Q3. Look for persistence and action under pressure.",
+            "criteria": [
+                {"score": 5, "description": "Creative tactics + urgency + finishes strong"},
+                {"score": 4, "description": "Multiple tactics + solid follow-through"},
+                {"score": 3, "description": "Basic persistence and intent"},
+                {"score": 2, "description": "Mild effort, limited urgency"},
+                {"score": 1, "description": "Gives up or disengaged"}
+            ],
+            "source_question": [1, 3]
+        },
+        "Adaptability": {
+            "prompt_instructions": "Evaluated from Q2 + Q3. Look for reflection, signal interpretation, and fast adjustment.",
+            "criteria": [
+                {"score": 5, "description": "Rapid learning + clear buyer signal plan"},
+                {"score": 4, "description": "Learns and adapts clearly"},
+                {"score": 3, "description": "Some self-awareness"},
+                {"score": 2, "description": "Struggles with adjustment"},
+                {"score": 1, "description": "Defensive or unaware"}
+            ],
+            "source_question": [2, 3]
+        },
+        "Coachability": {
+            "prompt_instructions": "Evaluated from Q4. Look for humility, learning mindset, and openness.",
+            "criteria": [
+                {"score": 5, "description": "Mentions learning, feedback, and growth directly"},
+                {"score": 4, "description": "Shows willingness to adapt"},
+                {"score": 3, "description": "Neutral or general positivity"},
+                {"score": 2, "description": "Mild resistance or vague"},
+                {"score": 1, "description": "Closed off or arrogant"}
+            ],
+            "source_question": 4
+        }
+    },
+    "authenticity_signal": {
+        "prompt_instructions": "Applied across all answers to adjust final score based on originality and human reasoning cues.",
+        "weight": 0.10,
+        "categories": [
+            {
+                "category": "Authentic_Original",
+                "description": "Natural phrasing, uses personal experience, imperfect but genuine; reasoning shows individuality",
+                "score_adjustment": 0
+            },
+            {
+                "category": "Assisted_Personalized",
+                "description": "Structured or polished, but adapted and contextualized; evidence of personal reasoning",
+                "score_adjustment": -5
+            },
+            {
+                "category": "AI_Generated_Low_Authenticity",
+                "description": "Overly formal, repetitive, or impersonal; no self-reference or human markers",
+                "score_adjustment": -10
+            }
+        ]
+    },
+    "scoring_summary": {
+        "section_1_discovery_positioning": {
+            "name": "Discovery & Value Positioning",
+            "max_points": 20,
+            "questions": [1, 2]
+        },
+        "section_2_objection_handling": {
+            "name": "Objection Handling",
+            "max_points": 10,
+            "questions": [3]
+        },
+        "section_3_enterprise_selling": {
+            "name": "Enterprise & Global Selling",
+            "max_points": 20,
+            "questions": [4]
+        },
+        "section_4_integrity_authenticity": {
+            "name": "Integrity & Authenticity",
+            "max_points": 20,
+            "questions": [5, "authenticity_signal"]
+        },
+        "total_points": 70
+    },
+    "overall_decision_thresholds": [
+        {
+            "score_range": [85, 100],
+            "decision": "Highly Recommended",
+            "action": "Excellent authenticity, reasoning depth, and situational judgment"
+        },
+        {
+            "score_range": [70, 84],
+            "decision": "Recommended",
+            "action": "Strong performance, credible reasoning, mild polish bias"
+        },
+        {
+            "score_range": [55, 69],
+            "decision": "Borderline Fit",
+            "action": "Average performance; lacks originality or specificity"
+        },
+        {
+            "score_range": [40, 54],
+            "decision": "Not Recommended",
+            "action": "Weak reasoning or templated responses"
+        },
+        {
+            "score_range": [0, 39],
+            "decision": "Reject",
+            "action": "Poor comprehension or authenticity"
+        }
+    ]
+}
 
 
 
@@ -1382,6 +1588,7 @@ JOB_CONFIGS = {
     JOB_ID_CLICKPOST: CLICKPOST_CONFIG,
     JOB_ID_DEMO: DEMO_CONFIG,
     JOB_ID_HTOLOOP:HTOLOOP_CONFIG,
+    JOB_ID_GERMIN8_DELHI: GERMIN8_DELHI_CONFIG,
     # Add other job configurations here, using their respective job_ids as keys
 }
 
