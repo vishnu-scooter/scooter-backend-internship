@@ -9847,6 +9847,14 @@ async def apply_job(
                     status_code=400,
                     content={"status": False, "applied":True,"message": "You already have an active application for this job"},
                 )
+        if not resume_text or not user_doc.get("basic_information"):
+            return JSONResponse(
+        status_code=400,
+        content={
+            "status": False,
+            "message": "Complete your profile with resume and basic information before applying."
+        }
+    )
         # --- Step 4: Generate job fit assessment ---
         job_fit_assessment = await generate_job_fit_summary(resume_text, job_description)
 
