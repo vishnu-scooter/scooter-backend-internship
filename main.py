@@ -12,7 +12,9 @@ import json
 from pypdf import PdfReader
 import io
 import logging
+from fastapi.responses import StreamingResponse
 import sys
+import csv
 from datetime import datetime, timezone
 from pathlib import Path
 import re
@@ -10936,6 +10938,172 @@ async def update_profile(payload: UpdateProfileRequest, authorization: str = Hea
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+
+
+@app.get("/contacts-csv/{job_id}")
+async def get_contacts_csv(
+    job_id: str,
+    audio_attended: Optional[bool] = None,
+    video_attended: Optional[bool] = None,
+    video_interview_sent: Optional[bool] = None,
+    application_status: Optional[str] = None,
+    shortlisted: Optional[bool] = None,
+    call_for_interview: Optional[bool] = None
+):
+    """
+    Get contacts CSV for a specific job role with optional filters.
+    - If multiple filters are applied, all must be satisfied (AND condition).
+    - If no filters are applied, fetch all candidates for that job.
+    """
+    try:
+        job_collection = db["job_roles"]
+        job = await job_collection.find_one({"_id": ObjectId(job_id)})
+        if not job:
+            raise HTTPException(status_code=404, detail="Job role not found")
+        
+        profile_collection = db["resume_profiles"]
+        user_collection = db["user_accounts"]
+
+        # --- Base condition ---
+        conditions = [{"job_id": job_id}]
+
+        # --- Apply filters (each adds an AND condition) ---
+        if audio_attended is not None:
+            if audio_attended:
+                conditions.append({"audio_interview": True})
+            else:
+                conditions.append({
+                    "$or": [
+                        {"audio_interview": False},
+                        {"audio_interview": {"$exists": False}}
+                    ]
+                })
+
+        if video_attended is not None:
+            if video_attended:
+                conditions.append({"video_interview_start": True})
+            else:
+                conditions.append({
+                    "$or": [
+                        {"video_interview_start": False},
+                        {"video_interview_start": {"$exists": False}}
+                    ]
+                })
+
+        if video_interview_sent is not None:
+            if video_interview_sent:
+                conditions.append({"video_email_sent": True})
+            else:
+                conditions.append({
+                    "$or": [
+                        {"video_email_sent": False},
+                        {"video_email_sent": {"$exists": False}}
+                    ]
+                })
+
+        if shortlisted is not None:
+            if shortlisted:
+                conditions.append({"final_shortlist": True})
+            else:
+                conditions.append({
+                    "$or": [
+                        {"final_shortlist": False},
+                        {"final_shortlist": {"$exists": False}}
+                    ]
+                })
+
+        if call_for_interview is not None:
+            if call_for_interview:
+                conditions.append({"call_for_interview": True})
+            else:
+                conditions.append({
+                    "$or": [
+                        {"call_for_interview": False},
+                        {"call_for_interview": {"$exists": False}}
+                    ]
+                })
+
+        if application_status is not None:
+            if application_status == "SendVideoLink":
+                conditions.append({
+                    "$or": [
+                        {"video_email_sent": True},
+                        {"application_status": "SendVideoLink"}
+                    ]
+                })
+            else:
+                conditions.append({"application_status": application_status})
+
+        # --- Build final query ---
+        has_filters = len(conditions) > 1
+        if has_filters:
+            filter_conditions = {"$and": conditions}
+        else:
+            # Default: get all candidates for the given job
+            filter_conditions = {"job_id": job_id}
+
+        logger.info(f"Contacts CSV filters: {filter_conditions}")
+
+        # --- Aggregation pipeline ---
+        pipeline = [
+            {"$match": filter_conditions},
+            {"$addFields": {"user_id_object": {"$toObjectId": "$user_id"}}},
+            {
+                "$lookup": {
+                    "from": "user_accounts",
+                    "localField": "user_id_object",
+                    "foreignField": "_id",
+                    "as": "user_info"
+                }
+            },
+            {"$unwind": "$user_info"},
+            {
+                "$project": {
+                    "_id": 1,
+                    "name": "$user_info.name",
+                    "phone": "$user_info.phone",
+                    "email": "$user_info.email"
+                }
+            }
+        ]
+
+        cursor = profile_collection.aggregate(pipeline)
+
+        # --- Generate CSV ---
+        csv_output = io.StringIO()
+        writer = csv.writer(csv_output)
+        writer.writerow(["Name", "Mobile", "Email"])
+
+        async for doc in cursor:
+            email = doc.get("email")
+            if not email:
+                continue
+
+            name = doc.get("name", "N/A")
+            phone = doc.get("phone", "N/A")
+
+            if phone and phone != "N/A":
+                phone = re.sub(r'^\+91', '', phone)
+                phone = re.sub(r'\D', '', phone)
+                if len(phone) > 10:
+                    phone = phone[-10:]
+
+            writer.writerow([name, phone, email])
+
+        csv_content = csv_output.getvalue()
+        csv_output.close()
+
+        filename = f"contacts_{job_id}_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}.csv"
+
+        return StreamingResponse(
+            io.StringIO(csv_content),
+            media_type="text/csv",
+            headers={"Content-Disposition": f"attachment; filename={filename}"}
+        )
+
+    except Exception as e:
+        logger.exception(f"Error retrieving contacts CSV: {e}")
+        raise HTTPException(status_code=500, detail=f"Error retrieving contacts CSV: {str(e)}")
 ######################################################################
 if __name__ == "__main__":
     logger.info("Starting FastAPI application")
