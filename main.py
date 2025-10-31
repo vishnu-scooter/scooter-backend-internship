@@ -7388,12 +7388,12 @@ async def get_my_job_candidates(
         profile_collection = db["resume_profiles"]
         filter_conditions = {"job_id": job_id}
 
+        # === General filters ===
         if audio_attended is not None:
             filter_conditions["audio_interview"] = True if audio_attended else {"$ne": True}
 
         if seen is not None:
             filter_conditions["seen_by_manager"] = True if seen else {"$ne": True}
-
 
         if application_status is not None:
             if application_status == "SendVideoLink":
@@ -7410,11 +7410,24 @@ async def get_my_job_candidates(
         if video_interview_sent is not None:
             filter_conditions["video_email_sent"] = True if video_interview_sent else {"$ne": True}
 
+        # === Shortlist + Call for Interview logic ===
         if shortlisted is not None:
-            filter_conditions["final_shortlist"] = True if shortlisted else {"$ne": True}
+            if shortlisted:
+                if call_for_interview is None:
+                    # shortlisted = True, no explicit call_for_interview
+                    filter_conditions["final_shortlist"] = True
+                    filter_conditions["call_for_interview"] = {"$exists": False}
+                else:
+                    # shortlisted = True, explicit call_for_interview True/False
+                    filter_conditions["final_shortlist"] = True
+                    filter_conditions["call_for_interview"] = call_for_interview
+            else:
+                # shortlisted = False
+                filter_conditions["final_shortlist"] = {"$ne": True}
 
-        if call_for_interview is not None:
-            filter_conditions["call_for_interview"] = True if call_for_interview else {"$ne": True}
+        elif call_for_interview is not None:
+            # only call_for_interview filter provided
+            filter_conditions["call_for_interview"] = call_for_interview
 
         # --- Parallel count queries ---
         count_tasks = [
@@ -7434,12 +7447,15 @@ async def get_my_job_candidates(
 
         skip = (page - 1) * page_size
 
-        # --- Fetch profiles in bulk ---
+        # --- Fetch profiles ---
         profiles = await profile_collection.find(
             filter_conditions,
-            {"user_id": 1, "application_status": 1, "final_shortlist": 1, "call_for_interview": 1, "seen_by_manager": 1,"job_fit_assessment":1, "audio_updated_job_fit_assessment":1,
-             "audio_interview": 1, "audio_url": 1, "video_url": 1, "video_email_sent": 1, "created_at": 1,"processed_video_url": 1,
-             "career_overview": 1}
+            {
+                "user_id": 1, "application_status": 1, "final_shortlist": 1, "call_for_interview": 1,
+                "seen_by_manager": 1, "job_fit_assessment": 1, "audio_updated_job_fit_assessment": 1,
+                "audio_interview": 1, "audio_url": 1, "video_url": 1, "video_email_sent": 1,
+                "created_at": 1, "processed_video_url": 1, "career_overview": 1
+            }
         ).sort("created_at", -1).skip(skip).limit(page_size).to_list(length=page_size)
 
         if not profiles:
@@ -7451,23 +7467,16 @@ async def get_my_job_candidates(
                 "candidates": []
             }
 
+        # === Prefetch and merge user/interview data ===
         user_ids = [ObjectId(p["user_id"]) for p in profiles if p.get("user_id")]
         profile_ids = [str(p["_id"]) for p in profiles]
 
-        # --- Prefetch all dependent data concurrently ---
         user_collection = db["user_accounts"]
         interview_collection = db["interview_sessions"]
         sales_collection = db["sales_scenarios"]
         audio_collection = db["audio_interview_results"]
         audio_proctoring_collection = db["audio_proctoring_logs"]
         video_proctoring_collection = db["video_proctoring_logs"]
-
-        user_task = user_collection.find({"_id": {"$in": user_ids}}).to_list(None)
-        interview_task = interview_collection.find({"application_id": {"$in": profile_ids}}).sort("created_at", -1).to_list(None)
-        audio_task = audio_collection.find({"application_id": {"$in": profile_ids}}).sort("created_at", -1).to_list(None)
-        audio_proc_task = audio_proctoring_collection.find({"user_id": {"$in": profile_ids}}).sort("created_at", -1).to_list(None)
-        video_proc_task = video_proctoring_collection.find({"user_id": {"$in": profile_ids}}).sort("created_at", -1).to_list(None)
-        sales_task = sales_collection.find({"user_id": {"$in": profile_ids}}).sort("created_at", -1).to_list(None)
 
         (
             users,
@@ -7476,9 +7485,15 @@ async def get_my_job_candidates(
             audio_proc,
             video_proc,
             sales_scenarios
-        ) = await asyncio.gather(user_task, interview_task, audio_task, audio_proc_task, video_proc_task, sales_task)
+        ) = await asyncio.gather(
+            user_collection.find({"_id": {"$in": user_ids}}).to_list(None),
+            interview_collection.find({"application_id": {"$in": profile_ids}}).sort("created_at", -1).to_list(None),
+            audio_collection.find({"application_id": {"$in": profile_ids}}).sort("created_at", -1).to_list(None),
+            audio_proctoring_collection.find({"user_id": {"$in": profile_ids}}).sort("created_at", -1).to_list(None),
+            video_proctoring_collection.find({"user_id": {"$in": profile_ids}}).sort("created_at", -1).to_list(None),
+            sales_collection.find({"user_id": {"$in": profile_ids}}).sort("created_at", -1).to_list(None)
+        )
 
-        # --- Convert to lookup dicts for O(1) access ---
         user_map = {str(u["_id"]): u for u in users}
         interview_map = {i["application_id"]: i for i in interviews}
         audio_map = {a["application_id"]: a for a in audio_interviews}
@@ -7494,11 +7509,12 @@ async def get_my_job_candidates(
             if not user:
                 continue
 
-            # --- Compute experience ---
+            # --- Compute total experience ---
             career_overview = profile.get("career_overview", {})
             company_history = career_overview.get("company_history", [])
             if company_history:
                 company_history.sort(key=lambda x: x.get("start_date", ""), reverse=True)
+
             total_months = 0
             for role in company_history:
                 try:
@@ -7512,7 +7528,6 @@ async def get_my_job_candidates(
                     continue
             career_overview["total_years_experience"] = round(total_months / 12, 1)
 
-            # --- Assemble candidate ---
             candidate = {
                 "application_id": str(profile["_id"]),
                 "profile_created_at": profile.get("created_at").isoformat() if profile.get("created_at") else None,
@@ -7540,7 +7555,7 @@ async def get_my_job_candidates(
                     "audio_interview_attended": bool(profile.get("audio_url")),
                     "video_email_sent": profile.get("video_email_sent", False),
                     "video_interview_url": profile.get("video_url"),
-                    "processed_video_url": profile.get("processed_video_url",""),
+                    "processed_video_url": profile.get("processed_video_url", ""),
                     "audio_interview_url": profile.get("audio_url"),
                     "resume_url_from_user_account": user.get("resume_url")
                 }
@@ -7595,7 +7610,9 @@ async def get_my_job_candidates(
             "filters": {
                 "audio_attended": audio_attended,
                 "video_attended": video_attended,
-                "application_status": application_status
+                "application_status": application_status,
+                "shortlisted": shortlisted,
+                "call_for_interview": call_for_interview
             },
             "pagination": {
                 "current_page": page,
