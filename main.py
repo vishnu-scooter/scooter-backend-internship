@@ -5244,7 +5244,9 @@ async def get_job_candidates(
     video_interview_sent: Optional[bool] = Query(None, description="Filter by video interview sent status"),
     application_status: Optional[str] = Query(None, description="Filter by application status"),
     shortlisted: Optional[bool] = Query(None, description="Filter by shortlisted status"),
-    call_for_interview: Optional[bool] = Query(None, description="Filter by call for interview status")
+    call_for_interview: Optional[bool] = Query(None, description="Filter by call for interview status"),
+    searchQuery: Optional[str] = Query(None, description="Search across name, phone, email, LinkedIn"),
+    location: Optional[str] = Query(None, description="Filter by current location")
 ):
     """
     Get candidates for a specific job role with optional filters.
@@ -5273,47 +5275,121 @@ async def get_job_candidates(
         
         # Get all profiles for this job role
         # --- Build filters ---
+        # --- Build filters ---
+        # --- Build filters ---
         profile_collection = db["resume_profiles"]
-        filter_conditions = {"job_id": job_id}
+        user_collection = db["user_accounts"]
 
+        # Initialize profile filter conditions
+        profile_and_conditions = []
+        profile_and_conditions.append({"job_id": job_id})
+
+        # Add profile-level filters
         if audio_attended is not None:
-            filter_conditions["audio_interview"] = True if audio_attended else {"$ne": True}
+            profile_and_conditions.append({"audio_interview": True} if audio_attended else {"audio_interview": {"$ne": True}})
 
         if seen is not None:
-            filter_conditions["seen_by_manager"] = True if seen else {"$ne": True}
+            profile_and_conditions.append({"seen_by_manager": True} if seen else {"seen_by_manager": {"$ne": True}})
 
         if application_status is not None:
             if application_status == "SendVideoLink":
-                filter_conditions["$or"] = [
-                    {"video_email_sent": True},
-                    {"application_status": "SendVideoLink"}
-                ]
+                profile_and_conditions.append({
+                    "$or": [
+                        {"video_email_sent": True},
+                        {"application_status": "SendVideoLink"}
+                    ]
+                })
             else:
-                filter_conditions["application_status"] = application_status
+                profile_and_conditions.append({"application_status": application_status})
 
         if video_attended is not None:
-            filter_conditions["video_interview_start"] = True if video_attended else {"$ne": True}
+            profile_and_conditions.append({"video_interview_start": True} if video_attended else {"video_interview_start": {"$ne": True}})
 
         if video_interview_sent is not None:
-            filter_conditions["video_email_sent"] = True if video_interview_sent else {"$ne": True}
+            profile_and_conditions.append({"video_email_sent": True} if video_interview_sent else {"video_email_sent": {"$ne": True}})
 
         if shortlisted is not None:
-            filter_conditions["final_shortlist"] = True if shortlisted else {"$ne": True}
+            profile_and_conditions.append({"final_shortlist": True} if shortlisted else {"final_shortlist": {"$ne": True}})
 
         if call_for_interview is not None:
-            filter_conditions["call_for_interview"] = True if call_for_interview else {"$ne": True}
+            profile_and_conditions.append({"call_for_interview": True} if call_for_interview else {"call_for_interview": {"$ne": True}})
+
+        # --- Handle searchQuery and location (user_accounts fields) ---
+        matching_user_ids = None
+
+        if searchQuery or location:
+            user_filter_conditions = []
+            
+            # Search query across name, email, phone, linkedin
+            if searchQuery:
+                regex = re.compile(re.escape(searchQuery), re.IGNORECASE)
+                user_filter_conditions.append({
+                    "$or": [
+                        {"name": regex},
+                        {"email": regex},
+                        {"phone": regex},
+                        {"linkedin_profile": regex}
+                    ]
+                })
+            
+            # Location filter
+            if location:
+                loc_regex = re.compile(re.escape(location), re.IGNORECASE)
+                user_filter_conditions.append({"basic_information.current_location": loc_regex})
+            
+            # Build user filter
+            if len(user_filter_conditions) == 1:
+                user_filter = user_filter_conditions[0]
+            else:
+                user_filter = {"$and": user_filter_conditions}
+            
+            # Get matching user IDs
+            matching_users = await user_collection.find(user_filter, {"_id": 1}).to_list(None)
+            matching_user_ids = [str(u["_id"]) for u in matching_users]
+            
+            # If no users match, return empty result early
+            if not matching_user_ids:
+                return {
+                    "status": True,
+                    "message": "No candidates found",
+                    "job_details": {"title": job.get("basicInfo", {}).get("jobTitle", "")},
+                    "pagination": {"total_candidates": 0, "total_pages": 0},
+                    "candidates": []
+                }
+            
+            # Add user_id filter to profile conditions
+            profile_and_conditions.append({"user_id": {"$in": matching_user_ids}})
+
+        # Combine profile conditions
+        if len(profile_and_conditions) == 1:
+            filter_conditions = profile_and_conditions[0]
+        else:
+            filter_conditions = {"$and": profile_and_conditions}
 
         # --- Parallel count queries ---
+        base_filter = {"$and": profile_and_conditions} if len(profile_and_conditions) > 1 else profile_and_conditions[0]
+
+        audio_count_conditions = profile_and_conditions.copy()
+        audio_count_conditions.append({"audio_interview": True})
+
+        video_count_conditions = profile_and_conditions.copy()
+        video_count_conditions.append({"video_interview_start": True})
+
+        video_round_conditions = profile_and_conditions.copy()
+        video_round_conditions.append({
+            "$or": [{"video_email_sent": True}, {"application_status": "SendVideoLink"}]
+        })
+
         count_tasks = [
-            profile_collection.count_documents(filter_conditions),
-            profile_collection.count_documents({**filter_conditions, "audio_interview": True}),
-            profile_collection.count_documents({**filter_conditions, "video_interview_start": True}),
-            profile_collection.count_documents({
-                **filter_conditions,
-                "$or": [{"video_email_sent": True}, {"application_status": "SendVideoLink"}]
-            })
+            profile_collection.count_documents(base_filter),
+            profile_collection.count_documents({"$and": audio_count_conditions}),
+            profile_collection.count_documents({"$and": video_count_conditions}),
+            profile_collection.count_documents({"$and": video_round_conditions})
         ]
+
         total_candidates, audio_attended_count, video_attended_count, moved_to_video_round_count = await asyncio.gather(*count_tasks)
+
+# ... rest of your code remains the same ...
 
         total_pages = (total_candidates + page_size - 1) // page_size
         if page > total_pages and total_pages > 0:
