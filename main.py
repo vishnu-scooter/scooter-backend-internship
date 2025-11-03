@@ -5328,6 +5328,7 @@ async def get_job_candidates(
                         {"name": regex},
                         {"email": regex},
                         {"phone": regex},
+                        {"basic_information.full_name": regex},
                         {"linkedin_profile": regex}
                     ]
                 })
