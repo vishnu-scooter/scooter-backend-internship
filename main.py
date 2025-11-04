@@ -8644,7 +8644,7 @@ async def update_candidate_data(
         error_msg = f"Error updating candidate data: {str(e)}"
         logger.error(error_msg, exc_info=True)
         return JSONResponse(status_code=500, content={"status": False, "message": error_msg})
-@app.patch("/edit-candidate-data")
+@app.patch("/edit-candidate-data/")
 async def edit_candidate_data(
     updates: dict,
     authorization: str = Header(...)
