@@ -5828,7 +5828,7 @@ async def get_job_details(job_id: str):
                 "base_salary": compensations.get("baseSalary", {}),
                 "ote": compensations.get("ote", []),
                 "opportunities": compensations.get("opportunities", []),
-                "key_challenges":compensations.get("key_challenges", []),
+                "key_challenges":compensations.get("key_challenged", []),
                 "languages": compensations.get("laguages", []),
                 "created_at": (
                     job.get("created_at").isoformat()
@@ -7109,7 +7109,7 @@ class JDCompensations(BaseModel):
     ote: List[str]
     equityOffered: bool
     opportunities: List[str]
-    keyChallenges: List[str]
+    keyChallenged: List[str]
     laguages: List[str]
 
 
