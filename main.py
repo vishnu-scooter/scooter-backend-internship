@@ -8018,7 +8018,7 @@ class CandidateLoginRequest(BaseModel):
 #         error_msg = f"Error during hiring manager login: {str(e)}"
 #         logger.error(error_msg, exc_info=True)
 #         raise HTTPException(status_code=500, detail=error_msg)
-async def evaluate_audio_interview(application_id: str):
+async def evaluateeeeeee_audio_interview(application_id: str):
     """
     Evaluate interview Q&A pairs stored in audio_interview_results for the given application_id.
     Updates evaluation results and resume_profiles accordingly.
@@ -9711,6 +9711,448 @@ class AudioInterviewTempCallRequest(BaseModel):
     answer: str | None = None
     application_id: str
 # --- Main Interview Endpoint ---
+# ============================================================================
+# SEPARATE FUNCTIONS FOR DEFAULT (SALES) INTERVIEW TYPE
+# ============================================================================
+
+async def generate_sales_questions(resume_text: str) -> list[str]:
+    """Generate questions for default sales interview."""
+    prompt = f"""
+You are an expert recruiter.
+Your task is to generate 3 interview questions tailored to the candidate's CV.
+Follow the rules below carefully.
+
+CV:
+{resume_text}
+
+Question Rules
+
+Q1 – Performance / Achievement
+
+If performance metrics, quotas, awards, or notable achievements are present:
+"Just went through your CV and saw that you [SPECIFIC_CLAIM] — that's [positive adjective]! Could you tell me a bit more about that?"
+
+If no performance/achievement data:
+"Tell me about an achievement you're proud of. It would be great if it is something that shows how you approach selling or influencing others."
+
+Q2 – Industry / Buyer Persona
+
+If industry or buyer persona experience is available:
+"I see you've been [SPECIFIC_EXPERIENCE] - [ACKNOWLEDGMENT_OF_DIFFICULTY]! What do you typically find is [BUYER_TYPE]'s biggest [CONCERN/CHALLENGE] when [CONTEXT]?"
+
+If no industry/buyer info:
+"If you had to sum it up, what do you think is the key to getting someone genuinely interested in what you're selling or pitching?"
+
+Q3 – Motivation / Future Fit
+
+If company history or industry is available:
+"Given your background in [THEIR_CONTEXT], I'm curious - what's drawing you to this opportunity and what do you think would transfer well from your current experience?"
+
+If limited background info:
+"What's drawing you to this role and what skills from your background do you think would be most valuable here?"
+
+Only return a valid Python list of string questions.
+No explanation. No markdown. No extra text.
+"""
+
+    async with aiohttp.ClientSession() as session:
+        async with session.post(
+            AZURE_OPENAI_URL,
+            headers=AZURE_HEADERS,
+            json={
+                "messages": [
+                    {"role": "system", "content": "You are a professional interviewer generating high-quality, role-relevant interview questions."},
+                    {"role": "user", "content": prompt}
+                ],
+                "temperature": 0.7,
+                "max_tokens": 600
+            }
+        ) as response:
+            if response.status != 200:
+                logger.error(f"Azure OpenAI API returned status {response.status}")
+                raise HTTPException(status_code=500, detail="Error calling LLM")
+
+            result = await response.json()
+            try:
+                question_list = result["choices"][0]["message"]["content"].strip()
+                return eval(question_list) if isinstance(question_list, str) else question_list
+            except Exception as e:
+                logger.error(f"Failed to parse questions: {e}, Response: {result}", exc_info=True)
+                raise HTTPException(status_code=500, detail="Invalid response format from LLM")
+
+
+def get_sales_probe(current_q_index: int) -> str:
+    """Get probe question for sales interview."""
+    probe_questions = {
+        0: "That's great! Can you give me specific numbers or metrics to help me understand the scale of that achievement?",
+        1: "Interesting. Can you share a specific example of how you've addressed that challenge in a real sales conversation?"
+    }
+    return probe_questions.get(current_q_index, "Can you elaborate on that?")
+
+
+async def evaluate_sales_answer(question: str, answer: str, i: int) -> AnswerEvaluation:
+    """Evaluate answer for sales interview."""
+    logger.info(f"Evaluating sales answer for question: {question[:100]}...")
+
+    prompt = f"""
+Evaluate the following interview Q&A based on the scoring framework for the given question number, and return a JSON response.
+
+Question Number: Q{i}
+Question: {question}
+Answer: {answer}
+
+### Scoring Frameworks ###
+
+Q1: Performance Validation (20 points)
+- STRONG (15–20 points):
+  - Provides specific numbers/metrics that match or exceed resume claims
+  - Details are consistent and realistic
+  - Shows clear ownership of results
+  - Natural, confident delivery
+- MODERATE (8–14 points):
+  - Some specifics but missing depth
+  - Numbers roughly align with resume
+  - Hesitant but generally consistent
+  - Can explain their role in results
+- WEAK (0–7 points):
+  - Vague, can't provide specific numbers
+  - Claims don't match resume
+  - Evasive or contradictory responses
+  - Takes credit for team/company results inappropriately
+
+Q2: Industry Knowledge (15 points)
+- STRONG (12–15 points):
+  - Demonstrates deep understanding of buyer concerns
+  - Uses correct industry terminology
+  - Specific, realistic examples
+  - Shows genuine sales experience
+- MODERATE (6–11 points):
+  - General awareness but limited depth
+  - Some industry knowledge
+  - Generic but not incorrect responses
+  - Shows some real experience
+- WEAK (0–5 points):
+  - No industry knowledge or incorrect information
+  - Generic, rehearsed responses
+  - Can't demonstrate actual buyer interaction
+  - Clearly fabricated experience
+
+Q3: Intent & Transferability (5 points)
+- STRONG (4–5 points):
+  - Clear, thoughtful motivation
+  - Shows research about the role/company
+  - Realistic about skill transfer
+  - Growth-oriented mindset
+- MODERATE (2–3 points):
+  - Reasonable motivation
+  - Some understanding of role requirements
+  - Generally realistic expectations
+  - Generic but acceptable responses
+- WEAK (0–1 points):
+  - Money-focused only or running from problems
+  - No understanding of role/company
+  - Unrealistic expectations
+  - Red flag motivations
+
+### Required Output (JSON Format) ###
+{{
+  "score": int,  # Based on the applicable Q1/Q2/Q3 rubric
+  "sales_motion": "inbound" | "outbound" | "hybrid" | "not mentioned",
+  "sales_cycle": "short" | "medium" | "long" | "not mentioned",
+  "icp": "string",  # Mention company sizes, industries, buyer roles
+  "highlights": ["string", "string", ...],  # 2–3 clear strengths
+  "red_flags": ["string", "string", ...],   # if any
+  "coaching_focus": "string",  # Skill to improve (based on response quality)
+  "fit_summary": "2–3 sentence overall assessment"
+}}
+Only return a valid JSON object. Do not include any markdown or explanations.
+"""
+    try:
+        async with aiohttp.ClientSession() as session:
+            logger.debug("Sending request to Azure OpenAI API for sales answer evaluation")
+            async with session.post(
+                AZURE_OPENAI_URL,
+                headers=AZURE_HEADERS,
+                json={
+                    "messages": [
+                        {"role": "system", "content": "You are an expert interviewer evaluating candidate responses based on credibility, communication, and interview context. Output a JSON."},
+                        {"role": "user", "content": prompt}
+                    ],
+                    "temperature": 0.3,
+                    "max_tokens": 1000,
+                    "response_format": {"type": "json_object"}
+                }
+            ) as response:
+                if response.status != 200:
+                    error_msg = f"Azure OpenAI API returned status code {response.status}"
+                    logger.error(error_msg)
+                    raise HTTPException(status_code=500, detail=error_msg)
+
+                result = await response.json()
+                logger.debug("Received response from Azure OpenAI API")
+
+                try:
+                    content = result["choices"][0]["message"]["content"]
+                    evaluation = json.loads(content)
+
+                    required_fields = ["score", "sales_motion", "sales_cycle", "icp", "highlights", "red_flags", "coaching_focus", "fit_summary"]
+                    for field in required_fields:
+                        if field not in evaluation:
+                            raise ValueError(f"Missing required field: {field}")
+
+                    evaluation["score"] = max(0, min(100, evaluation["score"]))
+                    logger.info("Successfully evaluated sales answer")
+                    return AnswerEvaluation(**evaluation)
+
+                except (KeyError, json.JSONDecodeError, ValueError) as e:
+                    error_msg = f"Error parsing Azure OpenAI response: {str(e)}"
+                    logger.error(error_msg)
+                    raise HTTPException(status_code=500, detail=error_msg)
+    except Exception as e:
+        error_msg = f"Error evaluating sales answer: {str(e)}"
+        logger.error(error_msg, exc_info=True)
+        raise HTTPException(status_code=500, detail=error_msg)
+
+
+# ============================================================================
+# SEPARATE FUNCTIONS FOR PRE-SALES INTERVIEW TYPE
+# ============================================================================
+
+async def generate_presales_questions(resume_text: str) -> list[str]:
+    """Generate questions for pre-sales/bid-management interview."""
+    prompt = f"""
+You are an expert recruiter for presales/bid-management roles.
+Your task is to generate 3 interview questions tailored to the candidate's CV.
+Follow the rules below carefully.
+
+CV:
+{resume_text}
+
+Question Rules
+
+Q1 – Ownership / Process Discipline
+
+If presales/documentation/coordination work is visible:
+"I noticed you've worked on [SPECIFIC_TYPE_OF_PROJECT_OR_DOCUMENTATION] — that kind of work usually requires real attention to detail. Could you tell me how you typically organize and track complex tasks or submissions like that?"
+
+If no presales or coordination clue in resume:
+"Tell me about a time you managed multiple tasks or deadlines — how did you stay on top of everything?"
+
+Q2 – Coordination / Collaboration
+
+If team/stakeholder collaboration is visible:
+"I see you've collaborated with [SPECIFIC_TEAM_OR_FUNCTION] in your previous role — coordinating across teams can be tricky. How do you usually make sure the right information or approvals come in on time?"
+
+If no clear stakeholder mention:
+"When you're depending on others to deliver inputs, how do you ensure things stay on schedule?"
+
+Q3 – Motivation / Fit
+
+If industry or role context is available:
+"Given your background in [THEIR_CONTEXT], what's drawing you to a presales or bid-management role, and what strengths do you think you'll bring to this kind of structured work?"
+
+If limited background info:
+"What about this role interests you, and what skills from your past work do you think will fit best here?"
+
+Only return a valid Python list of string questions.
+No explanation. No markdown. No extra text.
+"""
+
+    async with aiohttp.ClientSession() as session:
+        async with session.post(
+            AZURE_OPENAI_URL,
+            headers=AZURE_HEADERS,
+            json={
+                "messages": [
+                    {"role": "system", "content": "You are a professional interviewer generating high-quality presales interview questions."},
+                    {"role": "user", "content": prompt}
+                ],
+                "temperature": 0.7,
+                "max_tokens": 600
+            }
+        ) as response:
+            if response.status != 200:
+                logger.error(f"Azure OpenAI API returned status {response.status}")
+                raise HTTPException(status_code=500, detail="Error calling LLM")
+
+            result = await response.json()
+            try:
+                question_list = result["choices"][0]["message"]["content"].strip()
+                return eval(question_list) if isinstance(question_list, str) else question_list
+            except Exception as e:
+                logger.error(f"Failed to parse questions: {e}, Response: {result}", exc_info=True)
+                raise HTTPException(status_code=500, detail="Invalid response format from LLM")
+
+
+def get_presales_probe(current_q_index: int) -> str:
+    """Get probe question for pre-sales interview."""
+    probe_questions = {
+        0: "That's interesting. Can you walk me through the specific tools or systems you used to stay organized?",
+        1: "Got it. Can you give me an example of a time when someone didn't respond on time — how did you handle it?"
+    }
+    return probe_questions.get(current_q_index, "Can you elaborate on that?")
+
+
+async def evaluate_presales_answer(question: str, answer: str, i: int) -> AnswerEvaluation:
+    """Evaluate answer for pre-sales interview."""
+    logger.info(f"Evaluating presales answer for question: {question[:100]}...")
+
+    prompt = f"""
+Evaluate the following interview Q&A based on the scoring framework for the given question number, and return a JSON response.
+
+Question Number: Q{i}
+Question: {question}
+Answer: {answer}
+
+### Scoring Frameworks ###
+
+Q1: Execution & Ownership (20 points)
+Assesses how candidates manage complexity, deadlines, and process rigor.
+- STRONG (15–20 points):
+  - Describes a clear personal system for tracking and organizing bids/tasks
+  - Mentions use of tools or structure (Sheets, trackers, documentation flow)
+  - Demonstrates ownership (takes responsibility for submissions and accuracy)
+  - Communicates clearly and confidently, no fluff
+- MODERATE (8–14 points):
+  - Explains process in general terms but lacks concrete structure
+  - Some sense of ownership but mixed clarity on personal vs. team role
+  - Mentions tools/process but superficially
+  - Slightly hesitant or unclear delivery
+- WEAK (0–7 points):
+  - Vague, can't explain "how" they stay organized
+  - Overly reliant on others / no sense of ownership
+  - No mention of structure, tools, or tracking
+  - Evasive or confusing delivery
+
+Q2: Cross-Functional Coordination (15 points)
+Assesses stakeholder management, communication clarity, and follow-through.
+- STRONG (12–15 points):
+  - Gives clear example of coordinating inputs or chasing responses
+  - Demonstrates assertive but professional communication
+  - Mentions proactive follow-up or escalation tactics
+  - Shows maturity in managing deadlines and people dependencies
+- MODERATE (6–11 points):
+  - Understands need to follow up but describes it vaguely
+  - Mentions teamwork but not concrete communication practices
+  - Generally collaborative but reactive, not proactive
+- WEAK (0–5 points):
+  - Struggles to describe cross-team coordination
+  - Avoids responsibility for follow-through
+  - Indicates communication gaps or passivity
+  - Unclear, generic responses
+
+Q3: Intent & Role Fit (5 points)
+Assesses motivation and alignment with structured, process-driven work.
+- STRONG (4–5 points):
+  - Clear, thoughtful reason for choosing presales/bid management
+  - Appreciates the structure/process nature of the role
+  - Understands how their skills transfer logically
+  - Shows reliability and long-term mindset
+- MODERATE (2–3 points):
+  - Reasonable motivation but somewhat generic
+  - Basic understanding of role; not deeply thought-through
+  - Acceptable fit but limited insight
+- WEAK (0–1 point):
+  - Unclear or superficial motivation
+  - Treats role as stopgap or fallback
+  - Doesn't understand the responsibilities or fit
+
+### Required Output (JSON Format) ###
+{{
+  "score": int,  # Based on the applicable Q1/Q2/Q3 rubric
+  "sales_motion": "inbound" | "outbound" | "hybrid" | "not mentioned",
+  "sales_cycle": "short" | "medium" | "long" | "not mentioned",
+  "icp": "string",  # Mention company sizes, industries, buyer roles
+  "highlights": ["string", "string", ...],  # 2–3 clear strengths
+  "red_flags": ["string", "string", ...],   # if any
+  "coaching_focus": "string",  # Skill to improve (based on response quality)
+  "fit_summary": "2–3 sentence overall assessment"
+}}
+Only return a valid JSON object. Do not include any markdown or explanations.
+"""
+    try:
+        async with aiohttp.ClientSession() as session:
+            logger.debug("Sending request to Azure OpenAI API for presales answer evaluation")
+            async with session.post(
+                AZURE_OPENAI_URL,
+                headers=AZURE_HEADERS,
+                json={
+                    "messages": [
+                        {"role": "system", "content": "You are an expert interviewer evaluating presales candidate responses. Output a JSON."},
+                        {"role": "user", "content": prompt}
+                    ],
+                    "temperature": 0.3,
+                    "max_tokens": 1000,
+                    "response_format": {"type": "json_object"}
+                }
+            ) as response:
+                if response.status != 200:
+                    error_msg = f"Azure OpenAI API returned status code {response.status}"
+                    logger.error(error_msg)
+                    raise HTTPException(status_code=500, detail=error_msg)
+
+                result = await response.json()
+                logger.debug("Received response from Azure OpenAI API")
+
+                try:
+                    content = result["choices"][0]["message"]["content"]
+                    evaluation = json.loads(content)
+
+                    required_fields = ["score", "sales_motion", "sales_cycle", "icp", "highlights", "red_flags", "coaching_focus", "fit_summary"]
+                    for field in required_fields:
+                        if field not in evaluation:
+                            raise ValueError(f"Missing required field: {field}")
+
+                    evaluation["score"] = max(0, min(100, evaluation["score"]))
+                    logger.info("Successfully evaluated presales answer")
+                    return AnswerEvaluation(**evaluation)
+
+                except (KeyError, json.JSONDecodeError, ValueError) as e:
+                    error_msg = f"Error parsing Azure OpenAI response: {str(e)}"
+                    logger.error(error_msg)
+                    raise HTTPException(status_code=500, detail=error_msg)
+    except Exception as e:
+        error_msg = f"Error evaluating presales answer: {str(e)}"
+        logger.error(error_msg, exc_info=True)
+        raise HTTPException(status_code=500, detail=error_msg)
+
+
+# ============================================================================
+# STRATEGY DISPATCHER - Routes to appropriate functions based on interview type
+# ============================================================================
+
+class InterviewStrategy:
+    """Strategy class to dispatch to appropriate interview functions."""
+    
+    @staticmethod
+    async def generate_questions(resume_text: str, interview_type: str) -> list[str]:
+        """Generate questions based on interview type."""
+        if interview_type == "pre_sales":
+            return await generate_presales_questions(resume_text)
+        else:
+            return await generate_sales_questions(resume_text)
+    
+    @staticmethod
+    def get_probe_question(current_q_index: int, interview_type: str) -> str:
+        """Get probe question based on interview type."""
+        if interview_type == "pre_sales":
+            return get_presales_probe(current_q_index)
+        else:
+            return get_sales_probe(current_q_index)
+    
+    @staticmethod
+    async def evaluate_answer(question: str, answer: str, i: int, interview_type: str) -> AnswerEvaluation:
+        """Evaluate answer based on interview type."""
+        if interview_type == "pre_sales":
+            return await evaluate_presales_answer(question, answer, i)
+        else:
+            return await evaluate_sales_answer(question, answer, i)
+
+
+# ============================================================================
+# MAIN ENDPOINT - Uses strategy dispatcher
+# ============================================================================
+
 @app.post("/candidate-audio-interview/")
 async def audio_interview(
     request: AudioInterviewTempCallRequest,
@@ -9727,7 +10169,7 @@ async def audio_interview(
             )
 
         user_id = current_user["user_id"]
-
+        job_roles = db["job_roles"]
         # Fetch user
         user_doc = await user_accounts.find_one({"_id": ObjectId(user_id)})
         if not user_doc:
@@ -9737,10 +10179,29 @@ async def audio_interview(
         if not resume_text:
             return JSONResponse({"status": False, "message": "Resume not found"}, status_code=400)
 
+        # Fetch resume profile to get job_id
+        resume_profile = await resume_profiles.find_one({"_id": ObjectId(request.application_id)})
+        if not resume_profile:
+            return JSONResponse({"status": False, "message": "Resume profile not found"}, status_code=404)
+
+        job_id = resume_profile.get("job_id")
+        if not job_id:
+            return JSONResponse({"status": False, "message": "Job ID not found in resume profile"}, status_code=400)
+
+        # Fetch job role to determine interview type
+        job_role = await job_roles.find_one({"_id": ObjectId(job_id)})
+        if not job_role:
+            return JSONResponse({"status": False, "message": "Job role not found"}, status_code=404)
+
+        # Determine interview type
+        audio_round_type = job_role.get("audio_round_type", "default")
+        logger.info(f"Audio round type for job {job_id}: {audio_round_type}")
+        interview_type = "pre_sales" if audio_round_type == "pre_sales" else "default"
+
         # Find session
         session = await audio_results.find_one({"user_id": str(user_id), "application_id": request.application_id})
 
-        # ✅ CASE 1: Already completed
+        # CASE 1: Already completed
         if session and session.get("completed", False):
             return JSONResponse(
                 {
@@ -9752,11 +10213,10 @@ async def audio_interview(
                 status_code=200
             )
 
-        # ✅ CASE 2: If session exists and user tries to start again (no answer)
+        # CASE 2: If session exists and user tries to start again (no answer)
         if session and not session.get("completed", False) and request.answer is None:
             qa_list = session.get("questionAnswers", [])
             if len(qa_list) > 0:
-                # Interview already started — block restarting
                 return JSONResponse(
                     {
                         "status": True,
@@ -9767,9 +10227,10 @@ async def audio_interview(
                     status_code=200
                 )
 
-        # ✅ CASE 3: Create session if not exists (new interview)
+        # CASE 3: Create session if not exists (new interview)
         if not session:
-            questions = await generate_audio_intv_questions(resume_text)
+            # Use strategy dispatcher to generate questions
+            questions = await InterviewStrategy.generate_questions(resume_text, interview_type)
             session = {
                 "user_id": str(user_id),
                 "application_id": request.application_id,
@@ -9778,7 +10239,8 @@ async def audio_interview(
                 "questionAnswers": [],
                 "created_at": datetime.utcnow(),
                 "completed": False,
-                "probing_stage": False
+                "probing_stage": False,
+                "interview_type": interview_type
             }
             await audio_results.insert_one(session)
 
@@ -9786,8 +10248,9 @@ async def audio_interview(
         session = await audio_results.find_one({"user_id": str(user_id), "application_id": request.application_id})
         qa_list = session.get("questionAnswers", [])
         questions = session["questions"]
+        interview_type = session.get("interview_type", "default")
 
-        # --- NORMAL FLOW FROM HERE (unchanged) ---
+        # --- NORMAL FLOW FROM HERE ---
 
         def get_next_question_response(qa_list, questions):
             next_q = questions[len(qa_list)]
@@ -9854,7 +10317,8 @@ async def audio_interview(
         if current_q_index < 2:
             probe_needed = await needs_probing(current_q, request.answer)
             if probe_needed:
-                probe_q = get_probe(current_q_index)
+                # Use strategy dispatcher to get probe question
+                probe_q = InterviewStrategy.get_probe_question(current_q_index, interview_type)
                 current_entry["probe"] = {"question": probe_q, "answer": None}
                 await audio_results.update_one(
                     {"_id": session["_id"]},
@@ -9885,6 +10349,173 @@ async def audio_interview(
         error_msg = f"Error in audio interview: {str(e)}"
         logger.error(error_msg, exc_info=True)
         raise HTTPException(status_code=500, detail=error_msg)
+
+
+# ============================================================================
+# EVALUATION FUNCTION - Uses strategy dispatcher
+# ============================================================================
+
+async def evaluate_audio_interview(application_id: str):
+    """
+    Evaluate interview Q&A pairs stored in audio_interview_results for the given application_id.
+    Updates evaluation results and resume_profiles accordingly.
+    """
+
+    try:
+        collection = db["resume_profiles"]
+        audio_results_collection = db["audio_interview_results"]
+
+        # Fetch audio_interview_results document
+        audio_doc = await audio_results_collection.find_one({"application_id": application_id})
+        if not audio_doc:
+            return {"status": False, "message": "Audio interview results not found"}
+
+        profile = await collection.find_one({"_id": ObjectId(application_id)})
+        if not profile:
+            return {"status": False, "message": "Resume profile not found"}
+
+        job_fit_assessment = profile.get("job_fit_assessment", "")
+        interview_type = audio_doc.get("interview_type", "default")
+
+        results = []
+        scores = []
+        strengths = []
+        areas_for_improvement = []
+        red_flags = []
+        sales_motions = []
+        sales_cycles = []
+        icp_entries = []
+        coaching_focus = []
+
+        # Loop over questionAnswers (including probe if present)
+        for idx, qa_pair in enumerate(audio_doc.get("questionAnswers", [])):
+            i = idx + 1
+            question = qa_pair.get("question")
+            answer = qa_pair.get("answer")
+            probe = qa_pair.get("probe")
+
+            if not question or not answer:
+                continue
+
+            # Use strategy dispatcher to evaluate answer
+            evaluation_result = await InterviewStrategy.evaluate_answer(question, answer, i, interview_type)
+
+            results.append({
+                "question": question,
+                "answer": answer,
+                "evaluation": evaluation_result.dict()
+            })
+
+            logger.info(f"Evaluated Q{i}")
+
+            if hasattr(evaluation_result, "score"):
+                scores.append(evaluation_result.score)
+
+            if evaluation_result.score >= (0.75 * (20 if i == 1 else 15 if i == 2 else 5 if i == 3 else 100)):
+                strengths.append(evaluation_result.fit_summary)
+
+            if evaluation_result.score <= (0.4 * (20 if i == 1 else 15 if i == 2 else 5 if i == 3 else 100)):
+                areas_for_improvement.append(evaluation_result.fit_summary)
+
+            if evaluation_result.red_flags:
+                red_flags.extend(evaluation_result.red_flags)
+
+            if evaluation_result.sales_motion != "not mentioned":
+                sales_motions.append(evaluation_result.sales_motion)
+
+            if evaluation_result.sales_cycle != "not mentioned":
+                sales_cycles.append(evaluation_result.sales_cycle)
+
+            if evaluation_result.icp:
+                icp_entries.append(evaluation_result.icp)
+
+            if evaluation_result.coaching_focus:
+                coaching_focus.append(evaluation_result.coaching_focus)
+
+            # If probe exists and has Q&A, evaluate that too
+            if probe and probe.get("question") and probe.get("answer"):
+                probe_eval = await InterviewStrategy.evaluate_answer(probe["question"], probe["answer"], i, interview_type)
+                results.append({
+                    "question": probe["question"],
+                    "answer": probe["answer"],
+                    "evaluation": probe_eval.dict()
+                })
+
+                if hasattr(probe_eval, "score"):
+                    scores.append(probe_eval.score)
+
+        # Compute averages
+        avg_score = round(sum(scores) / len(scores), 2) if scores else 0
+        normalized_scores = []
+        for idx, score in enumerate(scores):
+            q_num = idx + 1
+            max_score = 20 if q_num == 1 else 15 if q_num == 2 else 5 if q_num == 3 else 100
+            normalized_scores.append((score / max_score) * 100)
+
+        avg_normalized = round(sum(normalized_scores) / len(normalized_scores), 2) if normalized_scores else 0
+        audio_interview_status = avg_normalized >= 65
+
+        # Generate OTP
+        import string, random
+        otp = ''.join(random.choices(string.ascii_uppercase + string.digits, k=5))
+
+        # Update resume profile
+        await collection.update_one(
+            {"_id": ObjectId(application_id)},
+            {"$set": {
+                "audio_interview": True,
+                "interview_otp": otp,
+                "video_interview_start": False
+            }}
+        )
+
+        # Update audio_interview_results document with evaluation
+        evaluation_doc = {
+            "qa_evaluations": results,
+            "interview_summary": {
+                "average_score": avg_score,
+                "average_normalized_score": avg_normalized,
+                "total_questions": len(results),
+                "strengths": strengths,
+                "areas_for_improvement": areas_for_improvement,
+                "red_flags": red_flags,
+                "icp_summary": list(set(icp_entries)),
+                "sales_motion_summary": list(set(sales_motions)),
+                "sales_cycle_summary": list(set(sales_cycles)),
+                "coaching_focus": coaching_focus,
+                "audio_interview_status": audio_interview_status,
+                "interview_type": interview_type
+            },
+            "evaluated_at": datetime.utcnow()
+        }
+
+        await audio_results_collection.update_one(
+            {"_id": audio_doc["_id"]},
+            {"$set": evaluation_doc}
+        )
+
+        # Update job fit assessment
+        audio_updated_job_fit_assessment = await audio_updated_fit_assessment(
+            job_fit_assessment=job_fit_assessment,
+            audio_interview=str(evaluation_doc)
+        )
+        await collection.update_one(
+            {"_id": ObjectId(application_id)},
+            {"$set": {"audio_updated_job_fit_assessment": audio_updated_job_fit_assessment}}
+        )
+
+        return {
+            "status": True,
+            "message": "Audio interview evaluated successfully.",
+            "qualified_for_video_round": audio_interview_status,
+            "interview_type": interview_type
+        }
+
+    except Exception as e:
+        error_msg = f"Error evaluating audio interview: {str(e)}"
+        logger.error(error_msg, exc_info=True)
+        raise HTTPException(status_code=500, detail=error_msg)
+
 
 class ApplyJobRequest(BaseModel):
     job_id: str
