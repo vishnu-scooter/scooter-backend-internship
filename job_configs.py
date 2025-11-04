@@ -9,6 +9,7 @@ JOB_ID_CLICKPOST="68905b9d5925cca675f43e00"
 JOB_ID_DEMO= "68dbb0e6e07e4078863fcf7b"
 JOB_ID_HTOLOOP="68e4b5e0c889a13b5d1d8891"
 JOB_ID_GERMIN8_DELHI="68fe3b80b7a77fc1cbbdc5a3"
+JOB_ID_REDACTO="6900ccaea85418299e9bd90c"
 # TestZeus Founding BDR Configuration
 TESTZEUS_FOUNDING_BDR_CONFIG = {
     "job_id": JOB_ID_TESTZEUS_FOUNDING_BDR,
@@ -1577,7 +1578,210 @@ GERMIN8_DELHI_CONFIG = {
     ]
 }
 
-
+REDACTO_CONFIG = {
+    "job_id": JOB_ID_REDACTO,
+    "job_role": "Sales Hunter / Strategic New Business (BFSI, India)",
+    "interview_questions": [
+        {
+            "question_number": 1,
+            "question": "You’re entering the BFSI market, where banks and NBFCs already work with multiple compliance vendors. How would you shortlist your first 20 target accounts, and what would your initial outreach or conversation look like to get their attention?",
+            "evaluation_type": "Q1_Outbound_Prospecting"
+        },
+        {
+            "question_number": 2,
+            "question": "You’re speaking with the Head of Risk at a mid-sized NBFC who says, “We already have a compliance tool in place.” How would you keep the discussion going to understand their current setup, uncover unmet needs, and identify a possible entry point for Redacto?",
+            "evaluation_type": "Q2_Discovery_Consultative"
+        },
+        {
+            "question_number": 3,
+            "question": "The CIO of a large private bank is interested but says, “Your pricing is higher than what we pay our current vendor.” How would you respond?",
+            "evaluation_type": "Q3_Value_Commercial"
+        },
+        {
+            "question_number": 4,
+            "question": "In BFSI sales, you often deal with multiple functions like Risk, Compliance, IT, and Procurement. Each function has different priorities. How would you manage and sequence these stakeholders from first contact to closure?",
+            "evaluation_type": "Q4_Enterprise_Selling"
+        },
+        {
+            "question_number": 5,
+            "question": "Did you use any AI tools while preparing or answering these questions? We can detect AI patterns, but we also recognize thoughtful and smart use that helps you think and structure. Explain if and how you used AI.",
+            "evaluation_type": "Q5_AI_Reflection"
+        }
+    ],
+    "evaluation_rubric": {
+        "Q1_Outbound_Prospecting": {
+            "prompt_instructions": "Evaluate strategic market thinking, prioritization, and outbound execution ability in BFSI context.",
+            "max_points": 5,
+            "scoring_logic": {
+                "Overall_Prospecting_Quality": [
+                    {"threshold": 0, "score": 1, "criteria": "No understanding of outbound strategy or BFSI targeting."},
+                    {"threshold": 1, "score": 2, "criteria": "Unclear targeting; vague statements; lacks structure."},
+                    {"threshold": 2, "score": 3, "criteria": "Mentions BFSI generically with limited segmentation or method; lists outreach steps without reasoning."},
+                    {"threshold": 3, "score": 4, "criteria": "Identifies relevant targets and coherent outreach plan; some reasoning but not deeply data-driven."},
+                    {"threshold": 4, "score": 5, "criteria": "Clear understanding of BFSI sub-segments, ICPs; structured, trigger-based outreach plan; creativity in entry strategy (e.g., regulatory trends)."}
+                ]
+            }
+        },
+        "Q2_Discovery_Consultative": {
+            "prompt_instructions": "Evaluate ability to navigate incumbent scenarios, uncover latent needs, and demonstrate curiosity effectively.",
+            "max_points": 5,
+            "scoring_logic": {
+                "Overall_Discovery_Quality": [
+                    {"threshold": 0, "score": 1, "criteria": "Pushy or dismissive; no discovery effort."},
+                    {"threshold": 1, "score": 2, "criteria": "Responds with feature talk or defensive tone; fails to explore deeper."},
+                    {"threshold": 2, "score": 3, "criteria": "Recognizes need to probe but uses scripted phrasing; minimal insight."},
+                    {"threshold": 3, "score": 4, "criteria": "Handles objection well, asks a few discovery questions; consultative tone but limited depth."},
+                    {"threshold": 4, "score": 5, "criteria": "Opens with curiosity; acknowledges vendor respectfully; asks probing, specific BFSI-relevant questions about process gaps; avoids pitching too soon."}
+                ]
+            }
+        },
+        "Q3_Value_Commercial": {
+            "prompt_instructions": "Evaluate commercial acumen, ability to defend value, and articulate ROI in a regulated enterprise environment.",
+            "max_points": 5,
+            "scoring_logic": {
+                "Overall_Value_Quality": [
+                    {"threshold": 0, "score": 1, "criteria": "Avoids or mishandles objection."},
+                    {"threshold": 1, "score": 2, "criteria": "Defensive or apologetic; shallow reasoning."},
+                    {"threshold": 2, "score": 3, "criteria": "Generic justification ('we offer more features'); limited financial linkage."},
+                    {"threshold": 3, "score": 4, "criteria": "Links pricing to value logically; confident but slightly formulaic."},
+                    {"threshold": 4, "score": 5, "criteria": "Reframes around ROI, risk reduction, compliance efficiency; uses BFSI-specific language (audit readiness, trust); confident and consultative tone."}
+                ]
+            }
+        },
+        "Q4_Enterprise_Selling": {
+            "prompt_instructions": "Evaluate stakeholder mapping, process thinking, and ability to manage complex multi-function BFSI deals.",
+            "max_points": 5,
+            "scoring_logic": {
+                "Overall_Enterprise_Quality": [
+                    {"threshold": 0, "score": 1, "criteria": "Ignores stakeholder complexity; unstructured or naive."},
+                    {"threshold": 1, "score": 2, "criteria": "Vague or generic statements; no sequencing strategy."},
+                    {"threshold": 2, "score": 3, "criteria": "Acknowledges multiple functions but lacks clear orchestration or process."},
+                    {"threshold": 3, "score": 4, "criteria": "Recognizes multi-stakeholder dynamic; proposes sequencing and relationship management; some structure but limited specificity."},
+                    {"threshold": 4, "score": 5, "criteria": "Structured multi-contact plan (maps Risk, Compliance, IT, Procurement); clear sequence (champion, exec alignment, procurement close); awareness of BFSI buying cycles; proactive communication plan."}
+                ]
+            }
+        },
+        "Q5_AI_Reflection": {
+            "prompt_instructions": "Evaluate transparency, self-awareness, and integrity in describing AI use.",
+            "max_points": 5,
+            "scoring_logic": {
+                "Overall_AI_Reflection_Quality": [
+                    {"threshold": 0, "score": 1, "criteria": "Dishonest or implies copying."},
+                    {"threshold": 1, "score": 2, "criteria": "Avoids or dismisses the question."},
+                    {"threshold": 2, "score": 3, "criteria": "Generic acknowledgment without reflection."},
+                    {"threshold": 3, "score": 4, "criteria": "Honest and clear but not deeply reflective."},
+                    {"threshold": 4, "score": 5, "criteria": "Transparent and thoughtful; explains how AI supported structuring or brainstorming; highlights personal reasoning and ethical use."}
+                ]
+            }
+        }
+    },
+    "trait_rubric": {
+        "Grit": {
+            "prompt_instructions": "Evaluated from Q1 + Q3. Look for persistence, creativity, and action under pressure.",
+            "criteria": [
+                {"score": 5, "description": "Creative strategies + urgency + strong follow-through."},
+                {"score": 4, "description": "Multiple tactics and consistent effort."},
+                {"score": 3, "description": "Shows persistence but limited creativity."},
+                {"score": 2, "description": "Mild effort or passive reasoning."},
+                {"score": 1, "description": "Gives up or disengaged approach."}
+            ],
+            "source_question": [1, 3]
+        },
+        "Adaptability": {
+            "prompt_instructions": "Evaluated from Q2 + Q3. Look for adjustment, reflection, and signal interpretation.",
+            "criteria": [
+                {"score": 5, "description": "Adapts messaging dynamically based on signals."},
+                {"score": 4, "description": "Learns and adjusts clearly."},
+                {"score": 3, "description": "Acknowledges need to adapt but lacks depth."},
+                {"score": 2, "description": "Rigid or formulaic approach."},
+                {"score": 1, "description": "Unaware or resistant to adaptation."}
+            ],
+            "source_question": [2, 3]
+        },
+        "Ownership": {
+            "prompt_instructions": "Evaluated from Q4. Look for structure, initiative, and deal leadership.",
+            "criteria": [
+                {"score": 5, "description": "Drives process independently; proactive orchestration."},
+                {"score": 4, "description": "Shows initiative and structured follow-up."},
+                {"score": 3, "description": "Basic structure; limited initiative."},
+                {"score": 2, "description": "Reactive or unclear process ownership."},
+                {"score": 1, "description": "Passive or lacks ownership."}
+            ],
+            "source_question": 4
+        }
+    },
+    "authenticity_signal": {
+        "prompt_instructions": "Applied across all answers to adjust final score based on originality and personal reasoning cues.",
+        "weight": 0.10,
+        "categories": [
+            {
+                "category": "Authentic_Original",
+                "description": "Natural phrasing, uses personal examples, imperfect but genuine reasoning.",
+                "score_adjustment": 0
+            },
+            {
+                "category": "Assisted_Personalized",
+                "description": "Structured or polished, but contextualized and reasoning-driven.",
+                "score_adjustment": -5
+            },
+            {
+                "category": "AI_Generated_Low_Authenticity",
+                "description": "Overly formal, generic, or impersonal; lacks human markers.",
+                "score_adjustment": -10
+            }
+        ]
+    },
+    "scoring_summary": {
+        "section_1_outbound_discovery": {
+            "name": "Outbound & Discovery",
+            "max_points": 20,
+            "questions": [1, 2]
+        },
+        "section_2_value_commercial": {
+            "name": "Value Articulation & Commercial Acumen",
+            "max_points": 20,
+            "questions": [3]
+        },
+        "section_3_enterprise_stakeholder": {
+            "name": "Stakeholder Navigation & Enterprise Selling",
+            "max_points": 20,
+            "questions": [4]
+        },
+        "section_4_integrity_authenticity": {
+            "name": "Integrity & AI Reflection",
+            "max_points": 20,
+            "questions": [5, "authenticity_signal"]
+        },
+        "total_points": 70
+    },
+    "overall_decision_thresholds": [
+        {
+            "score_range": [85, 100],
+            "decision": "Highly Recommended",
+            "action": "Excellent authenticity and strategic depth; strong BFSI and outbound instincts."
+        },
+        {
+            "score_range": [70, 84],
+            "decision": "Recommended",
+            "action": "Strong and credible reasoning; structured BFSI understanding."
+        },
+        {
+            "score_range": [55, 69],
+            "decision": "Borderline Fit",
+            "action": "Adequate understanding; lacks personalization or sharpness."
+        },
+        {
+            "score_range": [40, 54],
+            "decision": "Not Recommended",
+            "action": "Weak reasoning or generic responses."
+        },
+        {
+            "score_range": [0, 39],
+            "decision": "Reject",
+            "action": "Low comprehension or authenticity."
+        }
+    ]
+}
 
 # Master dictionary to hold all job configurations, keyed by job_id
 JOB_CONFIGS = {
@@ -1589,6 +1793,7 @@ JOB_CONFIGS = {
     JOB_ID_DEMO: DEMO_CONFIG,
     JOB_ID_HTOLOOP:HTOLOOP_CONFIG,
     JOB_ID_GERMIN8_DELHI: GERMIN8_DELHI_CONFIG,
+    JOB_ID_REDACTO: REDACTO_CONFIG
     # Add other job configurations here, using their respective job_ids as keys
 }
 
