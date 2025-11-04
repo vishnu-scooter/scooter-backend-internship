@@ -8613,16 +8613,7 @@ async def update_candidate_data(
         user_id = current_user["user_id"]
 
         profile_dict = profile.dict()
-        # job_id = profile_dict.get("job_id")
 
-        # # Validate job_id if provided
-        # if job_id:
-        #     job_collection = db["job_roles"]
-        #     job = await job_collection.find_one({"_id": ObjectId(job_id)})
-        #     if not job:
-        #         return JSONResponse(status_code=404, content={"status": False, "message": "Job role not found"})
-
-        # Step 1: Update user_accounts with profile details
         user_accounts = db["user_accounts"]
         update_fields = {
             "basic_information": profile_dict.get("basic_information"),
@@ -8636,31 +8627,6 @@ async def update_candidate_data(
             {"_id": ObjectId(user_id)},
             {"$set": update_fields}
         )
-        #user_doc = await user_accounts.find_one({"_id": ObjectId(user_id)})
-    #     resume_text = user_doc.get("resume_text", "") if user_doc else ""
-    #     job_description= job if job else {}
-    #     job_fit_assessment = await generate_job_fit_summary(resume_text, job_description)
-    #     # Step 2: Insert into resume_profiles
-    #     resume_profiles = db["resume_profiles"]
-    #     new_profile_doc = {
-    #     "user_id": user_id,
-    #     "job_id": job_id,
-    #     "video_url": None,
-    #     "video_uploaded_at": None,
-    #     "audio_url": None,
-    #     "job_fit_assessment": job_fit_assessment,
-    #     "audio_uploaded_at": None,
-    #     "created_at": datetime.utcnow(),
-    #     "updated_at": datetime.utcnow()
-    # }
-    #     result = await resume_profiles.insert_one(new_profile_doc)
-    #     application_id = str(result.inserted_id)
-
-        # # Step 3: Append application_id into user_accounts.application_ids
-        # await user_accounts.update_one(
-        #     {"_id": ObjectId(user_id)},
-        #     {"$push": {"application_ids": application_id}}
-        # )
 
         return {
             "status": True,
@@ -8678,7 +8644,56 @@ async def update_candidate_data(
         error_msg = f"Error updating candidate data: {str(e)}"
         logger.error(error_msg, exc_info=True)
         return JSONResponse(status_code=500, content={"status": False, "message": error_msg})
+@app.patch("/edit-candidate-data")
+async def edit_candidate_data(
+    updates: dict,
+    authorization: str = Header(...)
+):
+    """
+    Edit any independent field in candidate profile.
+    Only updates the fields provided dynamically.
+    Does not require full structured update.
+    Example:
+        {
+          "basic_information.full_name": "New Name"
+        }
+    """
+    try:
+        try:
+            current_user = await get_current_user(authorization)
+        except HTTPException:
+            return JSONResponse(
+                content={"status": False, "message": "Invalid or expired token"},
+                status_code=401
+            )
 
+        user_id = current_user["user_id"]
+        user_accounts = db["user_accounts"]
+
+        # Make sure updated_at always updated
+        updates["updated_at"] = datetime.utcnow()
+
+        await user_accounts.update_one(
+            {"_id": ObjectId(user_id)},
+            {"$set": updates}
+        )
+        updated_user = await user_accounts.find_one(
+    {"_id": ObjectId(user_id)},
+    {"password": 0}
+)
+        updated_user = serialize_document(updated_user)
+        return {
+            "status": True,
+            "message": "Field(s) updated successfully",
+            "data": updated_user
+        }
+
+    except Exception as e:
+        logger.error(str(e), exc_info=True)
+        return JSONResponse(
+            status_code=500,
+            content={"status": False, "message": f"Error editing candidate data: {str(e)}"}
+        )
 @app.post("/update-professional-summary/")
 async def update_professional_summary(
     professional_summary: Dict = Body(...),
