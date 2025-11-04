@@ -5828,7 +5828,7 @@ async def get_job_details(job_id: str):
                 "base_salary": compensations.get("baseSalary", {}),
                 "ote": compensations.get("ote", []),
                 "opportunities": compensations.get("opportunities", []),
-                "key_challenges":compensations.get("key_challenged", []),
+                "key_challenges":compensations.get("keyChallenged", []),
                 "languages": compensations.get("laguages", []),
                 "created_at": (
                     job.get("created_at").isoformat()
