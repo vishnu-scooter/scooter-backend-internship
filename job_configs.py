@@ -1604,8 +1604,13 @@ REDACTO_CONFIG = {
         },
         {
             "question_number": 5,
+            "question": "Many BFSI deals go through formal RFP or procurement cycles. If you’ve handled RFPs before, describe your role and approach. If not, explain how you would prepare for and manage an RFP process if given the opportunity.",
+            "evaluation_type": "Q5_RFP_&_Procurement_Process"
+        },
+        {
+            "question_number": 6,
             "question": "Did you use any AI tools while preparing or answering these questions? We can detect AI patterns, but we also recognize thoughtful and smart use that helps you think and structure. Explain if and how you used AI.",
-            "evaluation_type": "Q5_AI_Reflection"
+            "evaluation_type": "Q6_AI_Reflection"
         }
     ],
     "evaluation_rubric": {
@@ -1661,7 +1666,20 @@ REDACTO_CONFIG = {
                 ]
             }
         },
-        "Q5_AI_Reflection": {
+        "Q5_RFP_&_Procurement_Process": {
+            "prompt_instructions": "Evaluate RFP handling maturity, structured documentation process discipline, and ability to operate inside BFSI procurement cycles.",
+            "max_points": 5,
+            "scoring_logic": {
+            "Overall_RFP_Procurement_Quality": [
+            {"threshold": 0, "score": 1, "criteria": "Off-topic or indicates lack of familiarity with enterprise procurement processes."},
+            {"threshold": 1, "score": 2, "criteria": "No direct experience and little awareness of structured process or rigor required."},
+            {"threshold": 2, "score": 3, "criteria": "Limited exposure but shows logical understanding of RFP steps and what good process looks like."},
+            {"threshold": 3, "score": 4, "criteria": "Some RFP involvement OR clear conceptual understanding; can outline how to manage documentation, sequencing and deadlines effectively."},
+            {"threshold": 4, "score": 5, "criteria": "Direct hands-on RFP experience; structured process (qualification, stakeholder alignment, content tailoring, compliance checks, submission management); communicates ownership and detail orientation."}
+        ]
+    }
+        },
+        "Q6_AI_Reflection": {
             "prompt_instructions": "Evaluate transparency, self-awareness, and integrity in describing AI use.",
             "max_points": 5,
             "scoring_logic": {
@@ -1757,27 +1775,27 @@ REDACTO_CONFIG = {
     "overall_decision_thresholds": [
         {
             "score_range": [85, 100],
-            "decision": "Highly Recommended",
+            "decision": "Strong Hire",
             "action": "Excellent authenticity and strategic depth; strong BFSI and outbound instincts."
         },
         {
             "score_range": [70, 84],
-            "decision": "Recommended",
+            "decision": "Strong Hire",
             "action": "Strong and credible reasoning; structured BFSI understanding."
         },
         {
             "score_range": [55, 69],
-            "decision": "Borderline Fit",
+            "decision": "Interview Recommended",
             "action": "Adequate understanding; lacks personalization or sharpness."
         },
         {
             "score_range": [40, 54],
-            "decision": "Not Recommended",
+            "decision": "Interview Recommended",
             "action": "Weak reasoning or generic responses."
         },
         {
             "score_range": [0, 39],
-            "decision": "Reject",
+            "decision": "Interview Recommended",
             "action": "Low comprehension or authenticity."
         }
     ]
