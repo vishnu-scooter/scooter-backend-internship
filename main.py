@@ -2421,7 +2421,7 @@ async def generate_interview_summary(evaluated_questions: list, avg_skill_score:
 
     #total_overall_score = total_skill_score + total_trait_score_sum
     total_overall_score=total_question_score
-    calculated_recommendation = "Maybe"
+    calculated_recommendation = "Interview Recommended"
     calculated_reasoning = "Based on raw scores."
 
     for threshold in overall_decision_thresholds:
@@ -2452,7 +2452,7 @@ async def generate_interview_summary(evaluated_questions: list, avg_skill_score:
     2. CONCERNS: Any areas of concern or weakness (1-2 bullet points)
     3. RECOMMENDATION: Based on the combined total score of {total_overall_score}, and the following decision thresholds:
        {json.dumps(overall_decision_thresholds, indent=2)}
-       Choose one: "Strong Hire", "Maybe", "Weak", "Reject".
+       Choose one: eighter "Strong hire", or "Interview Recommended" only.
     4. Flags: if the candidates answer feels like AI generated, flag it as "might be AI_generated" in the summary, if it is genune then ignore this.
 
     Focus on:
@@ -2460,7 +2460,6 @@ async def generate_interview_summary(evaluated_questions: list, avg_skill_score:
     - Sales mindset and approach
     - Coachability and growth potential
     - Overall fit for the role
-
     Keep the summary under 200 words and be specific about what you observed.
 
     Format as:
@@ -2471,9 +2470,10 @@ async def generate_interview_summary(evaluated_questions: list, avg_skill_score:
     **Concerns:**
     - [concern 1]
 
-    **Recommendation:** [Strong Hire/Maybe/Weak/Reject]
+    **Recommendation:** [Strong Hire/Interview Recommended]
 
     **Reasoning:** [1-2 sentences explaining the recommendation based on Total Interview Score and specific observations from the interview.]
+    Donot mention any question number in the reasoning and summary.
     """
 
     try:
