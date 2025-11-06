@@ -23,7 +23,7 @@ import asyncio
 import uuid
 import time
 from resume_ocr import extract_text_with_ocr
-from bson import ObjectId
+from bson import ObjectId, errors
 from fastapi.responses import JSONResponse
 from azure.storage.blob.aio import BlobServiceClient, ContainerClient
 from azure.core.exceptions import ResourceExistsError
@@ -5161,12 +5161,17 @@ async def get_all_jobs(
         logger.info(f"Found {len(jobs)} jobs after pagination")
 
         jobs_with_manager = []
-
+        DEFAULT_CONFIG = {
+    "rounds": [
+        {"type": "audio", "order": 1},
+        {"type": "video", "order": 2}
+    ]
+}
         for job in jobs:
             basic_info = job.get("basicInfo", {})
             exp_skills = job.get("experienceSkills", {})
             compensations = job.get("compensations", {})
-
+            interview_config= job.get("interview_config", DEFAULT_CONFIG)
             # Identify hiring manager from created_by
             manager_id = job.get("created_by")
             manager = None
@@ -5198,6 +5203,7 @@ async def get_all_jobs(
                 "ote": compensations.get("ote", []),
                 "opportunities": compensations.get("opportunities", []),
                 "languages": compensations.get("laguages", []),
+                "interview_config": interview_config,
                 "created_at": (
                     job.get("created_at").isoformat()
                     if isinstance(job.get("created_at"), datetime)
@@ -8400,16 +8406,24 @@ async def get_candidate_profile(authorization: str = Header(...)):
 
         # Create a map job_id -> jobTitle
         job_map = {str(job["_id"]): job.get("basicInfo", {}).get("jobTitle", "Unknown") for job in jobs}
-
+        config_map = {str(job["_id"]): job.get("interview_config", {}) for job in jobs}
+        DEFAULT_CONFIG = {
+    "rounds": [
+        {"type": "audio", "order": 1},
+        {"type": "video", "order": 2}
+    ]
+}
         # Prepare application history
         application_history = []
         for app in applications:
             job_id = app.get("job_id")
             job_role_name = job_map.get(job_id, "Unknown")
+            interview_config = config_map.get(job_id) or DEFAULT_CONFIG 
             application_history.append({
                 "application_id": str(app["_id"]),
                 "job_role_name": job_role_name,
                 "job_id": job_id,
+                "interview_config": interview_config,
                 "application_status": app.get("application_status", ""),
                 "video_interview_start": app.get("video_interview_start", False),
                 "video_email_sent": app.get("video_email_sent", False),
@@ -10628,13 +10642,21 @@ async def apply_job(
             {"_id": ObjectId(user_id)},
             {"$push": {"application_ids": application_id}}
         )
-
+        DEFAULT_CONFIG = {
+    "rounds": [
+        {"type": "audio", "order": 1},
+        {"type": "video", "order": 2}
+    ]
+}
+        job= await job_collection.find_one({"_id": ObjectId(job_id)})
+        interview_config= job.get("interview_config", DEFAULT_CONFIG)
         return {
             "status": True,
             "message": "Job application submitted successfully",
             "applied": True,
             "application_id": application_id,
             "job_id": job_id,
+            "interview_config": interview_config
         }
 
     except Exception as e:
@@ -11847,6 +11869,52 @@ async def get_contacts_csv(
     except Exception as e:
         logger.exception(f"Error retrieving contacts CSV: {e}")
         raise HTTPException(status_code=500, detail=f"Error retrieving contacts CSV: {str(e)}")
+
+class InterviewConfigModel(BaseModel):
+    interview_config: Any   # can be dict, list, nested; future flexible
+
+@app.put("/job-roles/config/{job_id}/")
+async def update_job_interview_config(job_id: str, body: InterviewConfigModel, authorization: str = Header(...)):
+    
+    # --- Verify token ---
+    if not authorization.startswith("Bearer "):
+        return JSONResponse(status_code=401, content={"status": False, "message": "Invalid authorization header"})
+
+    token = authorization.split(" ")[1]
+
+    try:
+        decoded = verify_access_token(token)
+        manager_id = decoded.get("sub")
+        role = decoded.get("role")
+        if not manager_id or role != "manager":
+            return JSONResponse(status_code=403, content={"status": False, "message": "Unauthorized"})
+    except Exception:
+        return JSONResponse(status_code=401, content={"status": False, "message": "Invalid or expired token"})
+
+    # --- DB logic ---
+    job_roles = db["job_roles"]
+
+    try:
+        job_object_id = ObjectId(job_id)
+    except errors.InvalidId:
+        return JSONResponse(content={"status": False, "message": "Invalid Job ID"}, status_code=400)
+
+    result = await job_roles.update_one(
+        {"_id": job_object_id},
+        {"$set": {"interview_config": body.interview_config}}
+    )
+
+    if result.matched_count == 0:
+        return JSONResponse(content={"status": False, "message": "Job not found"}, status_code=404)
+
+    return JSONResponse(
+        content={
+            "status": True,
+            "message": "Interview configuration updated successfully",
+            "interview_config": body.interview_config
+        },
+        status_code=200
+    )
 ######################################################################
 if __name__ == "__main__":
     logger.info("Starting FastAPI application")
