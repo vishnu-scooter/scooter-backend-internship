@@ -5813,7 +5813,12 @@ async def get_job_details(job_id: str):
         basic_info = job.get("basicInfo", {})
         exp_skills = job.get("experienceSkills", {})
         compensations = job.get("compensations", {})
-
+        DEFAULT_CONFIG = {
+    "rounds": [
+        {"type": "audio", "order": 1},
+        {"type": "video", "order": 2}
+    ]
+}
         # Build response
         job_details = {
             "status": True,
@@ -5836,6 +5841,7 @@ async def get_job_details(job_id: str):
                 "opportunities": compensations.get("opportunities", []),
                 "key_challenges":compensations.get("keyChallenged", []),
                 "languages": compensations.get("laguages", []),
+                "interview_config": job.get("interview_config", DEFAULT_CONFIG),
                 "created_at": (
                     job.get("created_at").isoformat()
                     if isinstance(job.get("created_at"), datetime)
