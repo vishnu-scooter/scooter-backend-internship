@@ -10591,7 +10591,8 @@ async def apply_job(
             )
 
         resume_text = user_doc.get("resume_text", "")
-        job_description = job if job else {}
+        job_descriptions = job if job else {}
+        job_description= job.get("description", job_descriptions)
         application_ids = user_doc.get("application_ids", [])
         if application_ids:
             # Instead of calling DB again, use aggregation pipeline to check in one go
