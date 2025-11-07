@@ -3319,6 +3319,7 @@ async def generate_job_fit_summary(resume_text: str, job_description:str) -> str
     prompt = f"""
 You are an expert recruiter. 
 Provide a Job Fit Assessment for this resume and job description using the following weighted scoring system:
+in your analysis do not return an excessive explanation, keep it concise and to the point. 
 Resume:
 {resume_text}
 Job Description:
