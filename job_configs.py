@@ -11,6 +11,7 @@ JOB_ID_HTOLOOP="68e4b5e0c889a13b5d1d8891"
 JOB_ID_GERMIN8_DELHI="68fe3b80b7a77fc1cbbdc5a3"
 JOB_ID_REDACTO="6900ccaea85418299e9bd90c"
 JOB_ID_REDACTO_SALES_HUNTER="69098e2a233109006d4fd37e"
+JOB_ID_REDACTO_PRESALES_BID="6909e9a2f1c9a8bd4e7884cc"
 # TestZeus Founding BDR Configuration
 TESTZEUS_FOUNDING_BDR_CONFIG = {
     "job_id": JOB_ID_TESTZEUS_FOUNDING_BDR,
@@ -2023,6 +2024,222 @@ REDACTO_SALES_HUNTER_CONFIG = {
         }
     ]
 }
+
+REDACTO_PRESALES_BID_CONFIG = {
+    "job_id": JOB_ID_REDACTO_PRESALES_BID,
+    "job_role": "Presales Bid Coordinator (BFSI Compliance)",
+    "interview_questions": [
+        {
+            "question_number": 1,
+            "question": "It's Friday evening and two new RFPs come in, both due Monday morning. How would you plan your time and make sure both are submitted correctly and on time?",
+            "evaluation_type": "Q1_Handling_Deadlines"
+        },
+        {
+            "question_number": 2,
+            "question": "You need some technical and pricing information from senior teammates, but they haven't replied yet and the bid is due tomorrow. What would you do to get the information without missing the deadline?",
+            "evaluation_type": "Q2_Getting_Inputs_From_Others"
+        },
+        {
+            "question_number": 3,
+            "question": "An RFP needs many attachments — certificates, company details, product sheets. How would you make sure everything is included, correct, and well-organized before submitting?",
+            "evaluation_type": "Q3_Checking_Documents_And_Details"
+        },
+        {
+            "question_number": 4,
+            "question": "This role often deals with terms like DPDP, RBI outsourcing rules, or IRDAI guidelines. If you've worked with such regulations, tell us how. If not, explain how you would go about understanding and managing them while working on a bid.",
+            "evaluation_type": "Q4_Understanding_Compliance_Context"
+        },
+        {
+            "question_number": 5,
+            "question": "Did you use any AI tools while preparing or answering these questions? It's fine to use them to plan or organize your thoughts — that shows smart work. Copying full answers is not okay. Tell us how you used (or would use) such tools to make bid work faster and easier.",
+            "evaluation_type": "Q5_AI_Tool_Use_Reflection"
+        }
+    ],
+    "evaluation_rubric": {
+        "Q1_Handling_Deadlines": {
+            "prompt_instructions": "Evaluate time management, prioritization, planning structure, and ownership under time pressure in RFP context.",
+            "max_points": 5,
+            "scoring_logic": {
+                "Overall_Deadline_Management_Quality": [
+                    {"threshold": 0, "score": 1, "criteria": "Off-topic, confused, or no clear reasoning; passive or unrealistic approach."},
+                    {"threshold": 1, "score": 2, "criteria": "Vague or reactive response; limited clarity or realism; no prioritization plan."},
+                    {"threshold": 2, "score": 3, "criteria": "Generic statements ('I'll work hard over weekend'); limited structure; understands need to complete both but lacks method."},
+                    {"threshold": 3, "score": 4, "criteria": "Good plan with logical steps but missing one element (e.g., stakeholder communication or tracking); workable approach."},
+                    {"threshold": 4, "score": 5, "criteria": "Clear, well-structured plan: logs both RFPs, assesses urgency/complexity, splits work across time blocks, uses tracker, communicates with stakeholders proactively; shows ownership and confidence."}
+                ]
+            }
+        },
+        "Q2_Getting_Inputs_From_Others": {
+            "prompt_instructions": "Evaluate communication initiative, follow-up discipline, escalation strategy, and ability to maintain accountability while respecting relationships.",
+            "max_points": 5,
+            "scoring_logic": {
+                "Overall_Stakeholder_Communication_Quality": [
+                    {"threshold": 0, "score": 1, "criteria": "Waits passively or blames others; no ownership or initiative."},
+                    {"threshold": 1, "score": 2, "criteria": "Reactive; unclear on how to follow up; limited problem-solving."},
+                    {"threshold": 2, "score": 3, "criteria": "Mentions following up but lacks structured method or timing; minimal detail on communication tone."},
+                    {"threshold": 3, "score": 4, "criteria": "Good approach with clear follow-up steps; respectful tone but less detail on escalation or alternative strategies."},
+                    {"threshold": 4, "score": 5, "criteria": "Structured escalation plan: reminder → call → flag risk to manager → seek alternative input sources; maintains respect and accountability; proactive and solution-oriented."}
+                ]
+            }
+        },
+        "Q3_Checking_Documents_And_Details": {
+            "prompt_instructions": "Evaluate attention to detail, process orientation, documentation rigor, and quality control mechanisms.",
+            "max_points": 5,
+            "scoring_logic": {
+                "Overall_Document_Quality_Control": [
+                    {"threshold": 0, "score": 1, "criteria": "No system or process; likely to miss attachments or errors."},
+                    {"threshold": 1, "score": 2, "criteria": "Vague mentions of checking; no structured approach; reactive quality control."},
+                    {"threshold": 2, "score": 3, "criteria": "Talks generally about 'checking everything' or reviewing once; limited systematic approach."},
+                    {"threshold": 3, "score": 4, "criteria": "Reviews thoroughly with some structure; mentions verification steps but misses formal tracking or naming conventions."},
+                    {"threshold": 4, "score": 5, "criteria": "Uses checklist or tracker for attachments; mentions double-checking against RFP requirements, file naming conventions, version control, and proof of submission; systematic and detail-oriented."}
+                ]
+            }
+        },
+        "Q4_Understanding_Compliance_Context": {
+            "prompt_instructions": "Evaluate awareness of BFSI regulatory environment (DPDP, RBI, IRDAI), learning approach, and ability to manage compliance requirements in bids.",
+            "max_points": 5,
+            "scoring_logic": {
+                "Overall_Compliance_Awareness_Quality": [
+                    {"threshold": 0, "score": 1, "criteria": "No awareness or interest in learning; off-topic or dismissive."},
+                    {"threshold": 1, "score": 2, "criteria": "Minimal understanding; uncertain about how to learn or apply compliance knowledge."},
+                    {"threshold": 2, "score": 3, "criteria": "Aware that compliance matters but vague about specific regulations or learning approach."},
+                    {"threshold": 3, "score": 4, "criteria": "Limited direct exposure but gives clear, logical plan for learning: read guidelines, consult bid library, ask product/legal/tech teams; shows willingness to learn."},
+                    {"threshold": 4, "score": 5, "criteria": "Has worked with RFPs referencing DPDP/RBI/IRDAI or similar regulations; explains how they ensure compliance information is accurate, sourced, and verified in bid responses."}
+                ]
+            }
+        },
+        "Q5_AI_Tool_Use_Reflection": {
+            "prompt_instructions": "Evaluate transparency, integrity, self-awareness, and judgment about appropriate AI/tool use in professional work.",
+            "max_points": 5,
+            "scoring_logic": {
+                "Overall_AI_Reflection_Quality": [
+                    {"threshold": 0, "score": 1, "criteria": "Dishonest, evasive, or clearly reads from/copies AI text; lacks authenticity."},
+                    {"threshold": 1, "score": 2, "criteria": "Avoids or dismisses the question; defensive tone."},
+                    {"threshold": 2, "score": 3, "criteria": "Generic acknowledgment ('used ChatGPT a bit'); unclear boundaries between assistance and copying."},
+                    {"threshold": 3, "score": 4, "criteria": "Honest and clear about use; minimal reflection on how or why; straightforward but not deeply thoughtful."},
+                    {"threshold": 4, "score": 5, "criteria": "Transparent and thoughtful; explains how AI was used for structure, reminders, or organizing thoughts (not full content); understands value of smart tool use; shows personal reasoning and ethical judgment."}
+                ]
+            }
+        }
+    },
+    "trait_rubric": {
+        "Ownership": {
+            "prompt_instructions": "Evaluated from Q1 + Q3. Look for structure, initiative, accountability, and proactive process management.",
+            "criteria": [
+                {"score": 5, "description": "Drives process independently; proactive planning and quality control; structured documentation approach."},
+                {"score": 4, "description": "Shows initiative and structured follow-up; clear accountability."},
+                {"score": 3, "description": "Basic structure and awareness; limited proactive initiative."},
+                {"score": 2, "description": "Reactive or unclear process ownership; minimal planning."},
+                {"score": 1, "description": "Passive; lacks ownership or accountability."}
+            ],
+            "source_question": [1, 3]
+        },
+        "Communication_Discipline": {
+            "prompt_instructions": "Evaluated from Q2 + Q4. Look for follow-up consistency, escalation judgment, and ability to seek/verify information effectively.",
+            "criteria": [
+                {"score": 5, "description": "Structured communication plan; respectful persistence; knows when to escalate; verifies compliance information systematically."},
+                {"score": 4, "description": "Follows up consistently with good tone; clear escalation awareness."},
+                {"score": 3, "description": "Understands need to communicate but lacks structured approach."},
+                {"score": 2, "description": "Passive follow-up; unclear escalation judgment."},
+                {"score": 1, "description": "Avoids communication or blames others; no follow-through."}
+            ],
+            "source_question": [2, 4]
+        },
+        "Detail_Orientation": {
+            "prompt_instructions": "Evaluated from Q3. Look for systematic checking, process adherence, and accuracy mindset.",
+            "criteria": [
+                {"score": 5, "description": "Uses checklists, trackers, and verification systems; mentions naming conventions and version control; highly systematic."},
+                {"score": 4, "description": "Thorough review process with good attention to requirements."},
+                {"score": 3, "description": "Basic checking approach; understands importance but limited method."},
+                {"score": 2, "description": "Reactive or inconsistent checking; likely to miss details."},
+                {"score": 1, "description": "No systematic approach; high risk of errors or omissions."}
+            ],
+            "source_question": 3
+        }
+    },
+    "authenticity_signal": {
+        "prompt_instructions": "Applied across all answers to adjust final score based on originality, natural phrasing, and personal reasoning cues versus AI-generated or copied content.",
+        "weight": 0.05,
+        "categories": [
+            {
+                "category": "Authentic_Original",
+                "description": "Natural phrasing, uses personal examples or specific details, conversational tone, minor grammar imperfections acceptable; genuine reasoning.",
+                "score_adjustment": 0
+            },
+            {
+                "category": "Assisted_Personalized",
+                "description": "Polished or structured tone but contextualized with personal adaptation and reasoning-driven; shows thought beyond template.",
+                "score_adjustment": -2
+            },
+            {
+                "category": "AI_Generated_Low_Authenticity",
+                "description": "Overly formal, robotic phrasing, generic or repetitive; lacks human markers, personal details, or natural imperfections; likely copied.",
+                "score_adjustment": -5
+            }
+        ]
+    },
+    "scoring_summary": {
+        "section_1_planning_execution": {
+            "name": "Planning & Execution Under Pressure",
+            "max_points": 25,
+            "questions": [1]
+        },
+        "section_2_communication_collaboration": {
+            "name": "Communication & Collaboration",
+            "max_points": 20,
+            "questions": [2]
+        },
+        "section_3_accuracy_documentation": {
+            "name": "Accuracy & Documentation Rigor",
+            "max_points": 20,
+            "questions": [3]
+        },
+        "section_4_compliance_awareness": {
+            "name": "Compliance Context & Learning Ability",
+            "max_points": 20,
+            "questions": [4]
+        },
+        "section_5_integrity_tool_use": {
+            "name": "Integrity & Smart Tool Use",
+            "max_points": 10,
+            "questions": [5]
+        },
+        "section_6_authenticity": {
+            "name": "Authenticity Signal",
+            "max_points": 5,
+            "questions": ["authenticity_signal"]
+        },
+        "total_points": 100
+    },
+    "overall_decision_thresholds": [
+        {
+            "score_range": [85, 100],
+            "decision": "Strong Hire",
+            "action": "Highly organized, detail-oriented, reliable presales operator with excellent authenticity and process discipline."
+        },
+        {
+            "score_range": [70, 84],
+            "decision": "Hire",
+            "action": "Solid process thinking, structured approach, and credible reasoning; trainable on BFSI compliance specifics."
+        },
+        {
+            "score_range": [55, 69],
+            "decision": "Borderline",
+            "action": "Understands basics but shows inconsistent structure, detail orientation, or communication discipline; lacks personalization or sharpness."
+        },
+        {
+            "score_range": [40, 54],
+            "decision": "Not Recommended",
+            "action": "Weak organization, limited awareness, or generic responses; insufficient process mindset or ownership."
+        },
+        {
+            "score_range": [0, 39],
+            "decision": "Reject",
+            "action": "Off-topic responses, lacks ownership, or demonstrates low authenticity; insufficient competency for role requirements."
+        }
+    ]
+}
+
 # Master dictionary to hold all job configurations, keyed by job_id
 JOB_CONFIGS = {
     JOB_ID_ZENOTI_SENIOR_ACCOUNT_EXECUTIVE: ZENOTI_SENIOR_ACCOUNT_EXECUTIVE_CONFIG,
@@ -2034,7 +2251,8 @@ JOB_CONFIGS = {
     JOB_ID_HTOLOOP:HTOLOOP_CONFIG,
     JOB_ID_GERMIN8_DELHI: GERMIN8_DELHI_CONFIG,
     JOB_ID_REDACTO: REDACTO_CONFIG,
-    JOB_ID_REDACTO_SALES_HUNTER: REDACTO_SALES_HUNTER_CONFIG
+    JOB_ID_REDACTO_SALES_HUNTER: REDACTO_SALES_HUNTER_CONFIG,
+    JOB_ID_REDACTO_PRESALES_BID: REDACTO_PRESALES_BID_CONFIG,
     # Add other job configurations here, using their respective job_ids as keys
 }
 
