@@ -115,6 +115,7 @@ async def notify_developer_of_new_ticket(ticket: dict):
             {"email": "vishnu@thescooter.ai"},
             {"email": "usman@thescooter.ai"},
             {"email": "priyanshu@thescooter.ai"},
+            {"email": "ketaki@thescooter.ai"},
         ],
         sender={"email": "support@thescooter.ai", "name": "ScooterAI Automation"},
         subject=subject,
