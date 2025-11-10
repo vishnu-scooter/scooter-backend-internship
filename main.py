@@ -5435,6 +5435,7 @@ async def get_job_candidates(
 
         user_task = user_collection.find({"_id": {"$in": user_ids}}).to_list(None)
         interview_task = interview_collection.find({"application_id": {"$in": profile_ids}}).sort("created_at", -1).to_list(None)
+        #interview_task = await interview_collection.find_one({"application_id": {"$in": profile_ids}},sort=[("created_at", -1)])
         audio_task = audio_collection.find({"application_id": {"$in": profile_ids}}).sort("created_at", -1).to_list(None)
         audio_proc_task = audio_proctoring_collection.find({"user_id": {"$in": profile_ids}}).sort("created_at", -1).to_list(None)
         video_proc_task = video_proctoring_collection.find({"user_id": {"$in": profile_ids}}).sort("created_at", -1).to_list(None)
@@ -5451,7 +5452,14 @@ async def get_job_candidates(
 
         # --- Convert to lookup dicts for O(1) access ---
         user_map = {str(u["_id"]): u for u in users}
-        interview_map = {i["application_id"]: i for i in interviews}
+        #interview_map = {i["application_id"]: i for i in interviews}
+        interview_map = {}
+        for iv in interviews:
+            aid = iv["application_id"]
+            # if application_id stored as ObjectId convert to str for key consistency
+            key = str(aid)
+            if key not in interview_map:
+                interview_map[key] = iv
         audio_map = {a["application_id"]: a for a in audio_interviews}
         audio_proc_map = {p["user_id"]: p for p in audio_proc}
         video_proc_map = {p["user_id"]: p for p in video_proc}
