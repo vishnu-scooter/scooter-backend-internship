@@ -50,6 +50,7 @@ from sendgrid.helpers.mail import Mail
 import string
 from create_jd import call_openai_for_jd
 from sarvamai import SarvamAI
+# from create_meetings import create_meeting 
 from user_ticketing import send_support_conformation_email, notify_developer_of_new_ticket, generate_short_reference,upload_to_blob_storage_screenshot
 # Configure logging
 logging.basicConfig(
@@ -5851,6 +5852,12 @@ async def get_job_details(job_id: str):
                 "key_challenges":compensations.get("keyChallenged", []),
                 "languages": compensations.get("laguages", []),
                 "interview_config": job.get("interview_config", DEFAULT_CONFIG),
+                "the_role":job.get("the_role", ""),
+                "what_success_looks_like":job.get("what_success_looks_like", ""),
+                "what_we_offer":job.get("what_we_offer", ""),
+                "who_thrives_here":job.get("who_thrives_here", ""),
+                "why_join_redacto":job.get("why_join_redacto", ""),
+                "your_day_to_day":job.get("your_day_to_day", ""),
                 "created_at": (
                     job.get("created_at").isoformat()
                     if isinstance(job.get("created_at"), datetime)
@@ -11931,6 +11938,157 @@ async def update_job_interview_config(job_id: str, body: InterviewConfigModel, a
         },
         status_code=200
     )
+
+# class MeetingRequest(BaseModel):
+#     student_email: EmailStr
+#     mentor_email: EmailStr
+#     start_iso: str
+#     end_iso: str
+#     calendar_id: Optional[str] = "primary"
+#     summary: Optional[str] = "Mentorship Meeting"
+#     description: Optional[str] = None
+#     send_updates: Optional[str] = "all"
+
+# @app.post("/create-meeting")
+# async def create_meeting_endpoint(req: MeetingRequest):
+#     # simple validation/parsing
+#     try:
+#         start_dt = datetime.fromisoformat(req.start_iso)
+#         end_dt = datetime.fromisoformat(req.end_iso)
+#     except Exception:
+#         raise HTTPException(status_code=400, detail="start_iso/end_iso must be valid ISO datetimes")
+
+#     try:
+#         result = create_meeting(
+#             req.student_email, req.mentor_email, start_dt, end_dt,
+#             calendar_id=req.calendar_id,
+#             summary=req.summary,
+#             description=req.description,
+#             send_updates=req.send_updates
+#         )
+#         return result
+#     except RuntimeError as e:
+#         raise HTTPException(status_code=500, detail=str(e))
+
+
+# async def test(video_summary: str, job_fit_assessment:str) -> str:
+#     prompt = f"""
+# You are an expert recruiter.
+
+# Combine the following information to produce a concise 3-line Final Verdict about the candidate:
+
+# 1. Job Fit Assessment:
+# {job_fit_assessment}
+
+# 2. Video Interview Summary:
+# {video_summary}
+
+# Guidelines:
+# - it should always be only possitive
+# - Keep the verdict short (maximum 3 lines).
+# - Focus on the candidate’s overall suitability for the role.
+# - Reflect both technical/experience alignment (from the Job Fit Assessment) and soft-skill/interview performance (from the Video Interview Summary).
+# - Avoid repeating scores or detailed explanations.
+# - Tone should be professional, balanced, and conclusive.
+
+# Output Format:
+# Final Verdict:
+# [Write your 3-line verdict here]
+# """
+
+
+#     async with aiohttp.ClientSession() as session:
+#         async with session.post(
+#             AZURE_OPENAI_URL,
+#             headers=AZURE_HEADERS,
+#             json={
+#                 "messages": [
+#                     {"role": "system", "content": "You are a professional HR assessing candidates"},
+#                     {"role": "user", "content": prompt}
+#                 ],
+#                 "temperature": 0.5,
+#                 "max_tokens": 2000,
+#                 "response_format": {"type": "text"}  
+#             }
+#         ) as response:
+#             if response.status != 200:
+#                 logger.error(f"Azure OpenAI API returned status {response.status}")
+#                 raise HTTPException(status_code=500, detail="Error calling LLM")
+
+#             result = await response.json()
+#             try:
+#                 summary = result["choices"][0]["message"]["content"].strip()
+#                 return summary
+#             except (KeyError, IndexError):
+#                 raise HTTPException(status_code=500, detail="Invalid response format from LLM")
+# import asyncio
+# testtt= asyncio.run( test( video_summary="""
+# **Key Strengths:**
+# - Demonstrated solid technical knowledge and experience in AI/ML-driven solutions, particularly in collaboration with sales representatives to support high-value deal cycles.
+# - Strong stakeholder management skills, evidenced by successful alignment across multiple accounts and the ability to build custom proofs of value.
+
+# **Concerns:**
+# - Lower skill scores in some areas indicate potential gaps in practical sales execution and strategy, particularly in Q3 and Q7, which may hinder immediate effectiveness in a sales role.
+
+# **Recommendation:** Maybe
+
+# **Reasoning:** With a combined total score of 43, the candidate shows potential but may require further development in practical sales skills and experience. Their strengths in technical knowledge and stakeholder management are promising, yet the inconsistencies in skill scores suggest they might need additional support to thrive in a startup environment.
+# """,
+# job_fit_assessment="""
+# **Job Fit Assessment: LOW**
+
+# **Total Score: 37/100**
+
+# **Score Breakdown:**
+# - Experience Match: 5/15
+# - Market Alignment: 12/40
+# - Performance Match: 0/25
+# - Requirements Fit: 20/20
+
+# **Rationale:**
+# - **Experience Match:** The candidate has 1+ year of experience as a Business Analyst (Sales Engineer), which is 1 year short of the required 2 years for the Business Development Representative role. Thus, they receive 5 points.
+# - **Market Alignment:** The candidate's experience is primarily in business analysis and sales engineering within the tech industry, which does not directly align with the outbound sales focus of the position. They received 12 points for related industry experience and some alignment in buyer persona through public sector engagements.
+# - **Performance Match:** There is no evidence in the resume of quota achievement or sales performance metrics, resulting in a score of 0 points.
+# - **Requirements Fit:** The candidate possesses skills in stakeholder management and tools like CRM platforms, which align well with the requirements for the position, earning them a full score of 20 points for tool proficiency and transferable skills in the sales process.
+
+# Overall, while the candidate has relevant technical skills and some experience in sales engineering, they do not meet the required experience level or performance metrics for the Business Development Representative role.
+# """
+# )    )
+
+# print (testtt)
+
+@app.post("/update-job-role/")
+async def update_job_role(job_id: str, payload: dict = Body(...)):
+    try:
+        # Validate job_id (try ObjectId, else fallback to job_id string)
+        try:
+            query = {"_id": ObjectId(job_id)}
+        except:
+            query = {"job_id": job_id}
+
+        # Check if payload is empty
+        if not payload:
+            raise HTTPException(status_code=400, detail="No fields to update")
+
+        # Select collection
+        collection = db["job_roles"]
+
+        # Perform update
+        result = await collection.update_one(query, {"$set": payload})
+
+        if result.matched_count == 0:
+            raise HTTPException(status_code=404, detail="Job not found")
+
+        return {
+            "status": True,
+            "message": "Job updated successfully",
+            "updated_fields": payload
+        }
+
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 ######################################################################
 if __name__ == "__main__":
     logger.info("Starting FastAPI application")
