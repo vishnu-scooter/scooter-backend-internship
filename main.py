@@ -50,7 +50,7 @@ from sendgrid.helpers.mail import Mail
 import string
 from create_jd import call_openai_for_jd
 from sarvamai import SarvamAI
-# from create_meetings import create_meeting 
+from create_meetings import create_meeting , create_event_without_meet
 from user_ticketing import send_support_conformation_email, notify_developer_of_new_ticket, generate_short_reference,upload_to_blob_storage_screenshot
 # Configure logging
 logging.basicConfig(
@@ -11939,37 +11939,73 @@ async def update_job_interview_config(job_id: str, body: InterviewConfigModel, a
         status_code=200
     )
 
-# class MeetingRequest(BaseModel):
-#     student_email: EmailStr
-#     mentor_email: EmailStr
-#     start_iso: str
-#     end_iso: str
-#     calendar_id: Optional[str] = "primary"
-#     summary: Optional[str] = "Mentorship Meeting"
-#     description: Optional[str] = None
-#     send_updates: Optional[str] = "all"
+class MeetingRequest(BaseModel):
+    student_email: EmailStr
+    mentor_email: EmailStr
+    start_time: str
+    end_time: str
+    calendar_id: Optional[str] = "primary"
+    summary: Optional[str] = "Mentorship Meeting"
+    description: Optional[str] = None
+    send_updates: Optional[str] = "all"
 
-# @app.post("/create-meeting")
-# async def create_meeting_endpoint(req: MeetingRequest):
-#     # simple validation/parsing
-#     try:
-#         start_dt = datetime.fromisoformat(req.start_iso)
-#         end_dt = datetime.fromisoformat(req.end_iso)
-#     except Exception:
-#         raise HTTPException(status_code=400, detail="start_iso/end_iso must be valid ISO datetimes")
+@app.post("/create-meeting")
+async def create_meeting_endpoint(req: MeetingRequest,authorization: str = Header(None) ):
+    try:
+        try:
+            current_user = await get_current_user(authorization)
+        except HTTPException as e:
+            return JSONResponse(
+                content={"status": False, "message": "Invalid or expired token"},
+                status_code=401
+            )
+        if current_user["role"] != "manager":
+            return JSONResponse(
+                content={"status": False, "message": "Only managers can schedule interviews"},
+                status_code=403
+            )
+    # simple validation/parsing
+        try:
+            start_dt = datetime.fromisoformat(req.start_time)
+            end_dt = datetime.fromisoformat(req.end_time)
+        except Exception:
+            raise HTTPException(status_code=400, detail="start_iso/end_iso must be valid ISO datetimes")
 
-#     try:
-#         result = create_meeting(
-#             req.student_email, req.mentor_email, start_dt, end_dt,
-#             calendar_id=req.calendar_id,
-#             summary=req.summary,
-#             description=req.description,
-#             send_updates=req.send_updates
-#         )
-#         return result
-#     except RuntimeError as e:
-#         raise HTTPException(status_code=500, detail=str(e))
-
+        try:
+            result = create_meeting(
+                req.student_email, req.mentor_email, start_dt, end_dt,
+                calendar_id=req.calendar_id,
+                summary=req.summary,
+                description=req.description,
+                send_updates=req.send_updates
+            )
+            interview_doc = {
+            "candidate_email": req.student_email,
+            "interviewer_email": req.mentor_email,
+            "meeting_link": result.get("meetLink", ""),
+            "start_time":start_dt,
+            "end_time": end_dt,
+            "created_by": current_user["user_id"],  # who booked it
+            "created_at": datetime.utcnow()
+           }
+            collection = db["interviews"]
+            save = await collection.insert_one(interview_doc)
+            #return result
+            return JSONResponse(
+            content={
+                "status": True,
+                "message": "Interview scheduled successfully",
+                "data": {"interview_link": result.get("meetLink", "")}
+            },
+            status_code=200
+        )
+        except RuntimeError as e:
+            raise HTTPException(status_code=500, detail=str(e))
+    except Exception as e:
+        error_msg = f"Error scheduling interview: {str(e)}"
+        logger.error(error_msg, exc_info=True)
+        return JSONResponse(content={"status": False, "message": error_msg}, status_code=500)
+    
 
 # async def test(video_summary: str, job_fit_assessment:str) -> str:
 #     prompt = f"""
@@ -12092,4 +12128,4 @@ async def update_job_role(job_id: str, payload: dict = Body(...)):
 ######################################################################
 if __name__ == "__main__":
     logger.info("Starting FastAPI application")
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(app, host="0.0.0.0", port=8000 )
