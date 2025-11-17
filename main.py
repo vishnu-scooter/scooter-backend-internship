@@ -50,7 +50,7 @@ from sendgrid.helpers.mail import Mail
 import string
 from create_jd import call_openai_for_jd
 from sarvamai import SarvamAI
-from create_meetings import create_meeting , create_event_without_meet
+from create_meetings import create_meeting
 from user_ticketing import send_support_conformation_email, notify_developer_of_new_ticket, generate_short_reference,upload_to_blob_storage_screenshot
 # Configure logging
 logging.basicConfig(
