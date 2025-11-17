@@ -1,0 +1,13 @@
+{
+  "type": "service_account",
+  "project_id": "scooter-474308",
+  "private_key_id": "28615053db9168a0c12d1f110c678d06ff11429e",
+  "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQCfBPN8dT9nkaBv\nBv+IkKtxPq66zphH5p/QHSlgLUDh0JxYHZK4hRgCgvJqpcmlzMQPUkqZ9iKPrZ3t\nQO62WUOgubTprljNMywTMue9NNZBxWyF9/ZweLywqUfLFKQpgKNfQOFuKL7E6PB/\nC84DuRqBweg+np0rDc2wxCIgIp+2UWyVlCXElJ/IxmheMo9D3xaXKge2H9LSSZme\nXABCSJ1hKcwioTDGr50He3cgMFm00lh0d42W0Zh0hfrjGyCeKOz1z1aafE7bRV0J\nNSdzA1CYP36TRsDHwPfDrwT1VYm8mYFocFUklP0hd2CkW5Py/PNXqMAYQpSWewfx\nHUajR8a9AgMBAAECggEAJoP6+5akdE/r5WhzBR9RPx0ZEisO7D9aTvx5NI/RasBt\n1dPX4TRvY9BWqekc5bkqdbGPWyooJde97CSxjN4jCK9iN8VgQddWohHO2l+NU6Hf\nTrWH7ab4wOtHddM6jcjYCS68S0O4LRZkhckUrYcseeg++cfONorh2qIux8zLFUvS\nf0EptVPJQDO36XfkE6Y7WCL+xHUv84UzpjL3acT0nsso8AwtvRN9llFhnRaivm8k\nmXPXr8vQGjf9kaVx9/EpqHYqCHhSlbDJiYiklz8WnJOWus4Eo1U28r+xdGsgtZLU\n0b9OXB/gsMPplbualBNDv7BQDnGLK/a7lpWMELkvWwKBgQDYfaHNoakO0zwKcNLS\nM/zuC/WzoLEbNXsvEiqTb6rwavVLslBQeGPq/OU6FhUIhyXh/YpRDGPyqVVXgyPN\nvG54sBuVtnIBweCgprSI8hdyrH9qxbmdaIFoDAvt/FpmWTEX28g/yxvL3WMa91GS\noOkAnMduwWlm9Er0EMK2HvDjDwKBgQC8Ckao1J8IKnKBIW2+mgCjtB9bLjqw/SQ6\nWifV4a5ej9jq/WXBt0YlHT0ko5ije+j4/bJ5QjF2HssilBDX++CBY9ba5vxfym9u\nzFgnOfD5ONxaHM5TlF/qrVRNtzIRBA2l/nuFeBRf0uDokcninnfox7NVkY8WLQwU\niFHQHIXJcwKBgBDt+io/ex36rNZQLlxbzmq7KrKqXU84ZnKu4/91mxOD+by6rAcu\n8vlcX3ykX260SuUaU6e05VgDn/Xg/nrHQohTlUSm6NF0XOGTR8jxzZ2dGbW60qIZ\nmw0M7B3nPxaD4Q/xkv5SHtFZdbeVIZ7q0G3I1Nu3akuvzPC7Is7lKodHAoGAZmBt\n4gOI5ig+GUH6/xfXm0k4/SqpN61K6R4mrBLoHYHRxvbZTOOcpB5MKMONGg0fZViy\nr8QzK61OSXA1z3HJ5IhX9OxnoTuU+cz1fb3VDctAZStjxit1IU7nJDzGXG9JgwOP\nerZK2XT1kIm3UdOXUzxOzhqmvZsfBZrGeDjfOjMCgYEAujVD72UuEXh6gOj2al4K\nSZbkv/93BJ1W7wGiHAcO8eVOVFjDvLgNP5bC4frOxQOj59zXlxOKjVHNVZ0V/bor\nLjiKMIUHR8E9Y8HDUaswt9HUr7Hh4P8LVMteVdVKtS23Hz/meMHiJLlwhYQ1Owq8\nPcFyJpGd0niFOa+VWDkp2zI=\n-----END PRIVATE KEY-----\n",
+  "client_email": "gmeet-scheduler@scooter-474308.iam.gserviceaccount.com",
+  "client_id": "112604146454929109721",
+  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+  "token_uri": "https://oauth2.googleapis.com/token",
+  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/gmeet-scheduler%40scooter-474308.iam.gserviceaccount.com",
+  "universe_domain": "googleapis.com"
+}
