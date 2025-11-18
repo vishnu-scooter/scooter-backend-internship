@@ -8449,6 +8449,7 @@ async def get_candidate_profile(authorization: str = Header(...)):
                 "application_status": app.get("application_status", ""),
                 "video_interview_start": app.get("video_interview_start", False),
                 "video_email_sent": app.get("video_email_sent", False),
+                "direct_moved_to_video": app.get("direct_moved_to_video", False),
                 "audio_interview_status": app.get("audio_interview", False),
             })
 
@@ -10643,7 +10644,9 @@ async def apply_job(
     )
         # --- Step 4: Generate job fit assessment ---
         job_fit_assessment = await generate_job_fit_summary(resume_text, job_description)
-
+        is_high_fit = bool(re.search(r'Job Fit Assessment:\s*\*?\*?\s*HIGH', job_fit_assessment, re.IGNORECASE))      
+        direct_video_enabled = job.get("interview_config", {}).get("direct_video", False)
+        video_email_sent = is_high_fit and direct_video_enabled
         # --- Step 5: Insert application into resume_profiles ---
         
         new_profile_doc = {
@@ -10654,6 +10657,8 @@ async def apply_job(
             "audio_url": None,
             "audio_uploaded_at": None,
             "job_fit_assessment": job_fit_assessment,
+            "video_email_sent": video_email_sent,
+            "direct_moved_to_video": video_email_sent,
             "created_at": datetime.utcnow(),
             "updated_at": datetime.utcnow()
         }
