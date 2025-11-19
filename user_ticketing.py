@@ -23,6 +23,7 @@ logger = logging.getLogger(__name__)
 # Azure settings (replace with your actual settings or use env variables)
 AZURE_STORAGE_CONNECTION_STRING = os.getenv("AZURE_STORAGE_CONNECTION_STRING")
 AZURE_STORAGE_SCREENSHOT_CONTAINER_NAME = os.getenv("AZURE_STORAGE_SCREENSHOT_CONTAINER_NAME", "user-screenshots")
+AZURE_STORAGE_COMPANYLOGO_CONTAINER_NAME = os.getenv("AZURE_STORAGE_COMPANYLOGO_CONTAINER_NAME", "company-logos")
 # Reference number generator
 def generate_short_reference(length=8):
     return ''.join(random.choices(string.ascii_uppercase + string.digits, k=length))
@@ -153,3 +154,24 @@ async def upload_to_blob_storage_screenshot(file: UploadFile, reference_number: 
         raise HTTPException(status_code=500, detail="Screenshot upload failed.")
 
 
+async def upload_to_blob_storage_company_logo(file: UploadFile, reference_number: str) -> str:
+    try:
+        timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+        extension = os.path.splitext(file.filename)[1]
+        blob_name = f"logo-{reference_number}-{timestamp}{extension}"
+
+        blob_service_client = BlobServiceClient.from_connection_string(AZURE_STORAGE_CONNECTION_STRING)
+        container_client = blob_service_client.get_container_client(AZURE_STORAGE_COMPANYLOGO_CONTAINER_NAME)
+
+        try:
+            await container_client.create_container()
+        except ResourceExistsError:
+            pass
+
+        blob_client = container_client.get_blob_client(blob_name)
+        content = await file.read()
+        await blob_client.upload_blob(content, overwrite=True)
+        return blob_client.url
+    except Exception as e:
+        logger.error(f"logo upload failed: {e}")
+        raise HTTPException(status_code=500, detail="logo upload failed.")
