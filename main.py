@@ -12407,7 +12407,7 @@ async def update_job_logo(
         raise e
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-######################################################################
+#######################################################################
 if __name__ == "__main__":
     logger.info("Starting FastAPI application")
     uvicorn.run(app, host="0.0.0.0", port=8000 )
