@@ -12282,9 +12282,18 @@ async def create_event_endpoint(req: EventRequest, authorization: str = Header(N
 # print (testtt)
 
 @app.post("/update-job-role/")
-async def update_job_role(job_id: str, payload: dict = Body(...)):
+async def update_job_role(job_id: str, payload: dict = Body(...),authorization: str = Header(...)):
     try:
         # Validate job_id (try ObjectId, else fallback to job_id string)
+        try:
+            current_user = await get_current_user(authorization)
+        except HTTPException as e:
+            return JSONResponse(
+                content={"status": False, "message": "Invalid or expired token"},
+                status_code=401
+            )
+        if current_user["role"] != "manager":
+            raise HTTPException(status_code=403, detail="Access denied. Only hiring managers can create jobs.")
         try:
             query = {"_id": ObjectId(job_id)}
         except:
@@ -12293,7 +12302,13 @@ async def update_job_role(job_id: str, payload: dict = Body(...)):
         # Check if payload is empty
         if not payload:
             raise HTTPException(status_code=400, detail="No fields to update")
-
+        ALLOWED_KEYS = {"the_role", "your_day_to_day", "what_we_offer", "why_join_redacto"}
+        invalid_keys = [key for key in payload.keys() if key not in ALLOWED_KEYS]
+        if invalid_keys:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid keys: {invalid_keys}. Allowed keys: {list(ALLOWED_KEYS)}"
+            )
         # Select collection
         collection = db["job_roles"]
 
