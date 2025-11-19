@@ -51,7 +51,7 @@ import string
 from create_jd import call_openai_for_jd
 from sarvamai import SarvamAI
 from create_meetings import create_meeting,create_event_without_meet
-from user_ticketing import send_support_conformation_email, notify_developer_of_new_ticket, generate_short_reference,upload_to_blob_storage_screenshot
+from user_ticketing import send_support_conformation_email, notify_developer_of_new_ticket, generate_short_reference,upload_to_blob_storage_screenshot, upload_to_blob_storage_company_logo
 # Configure logging
 logging.basicConfig(
     level=logging.INFO, 
@@ -12326,6 +12326,83 @@ async def update_job_role(job_id: str, payload: dict = Body(...),authorization: 
             "updated_fields": payload
         }
 
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/update-job-logo/")
+async def update_job_logo(
+    job_id: str,
+    authorization: str = Header(...),
+    logo: UploadFile = File(...)
+):
+    try:
+        # Authenticate user
+        try:
+            current_user = await get_current_user(authorization)
+        except HTTPException as e:
+            return JSONResponse(
+                content={"status": False, "message": "Invalid or expired token"},
+                status_code=401
+            )
+        
+        # Check role permission
+        if current_user["role"] != "manager":
+            raise HTTPException(
+                status_code=403, 
+                detail="Access denied. Only hiring managers can update job logos."
+            )
+        
+        # Validate file type
+        allowed_types = ["image/png", "image/jpeg", "image/jpg", "image/webp"]
+        if logo.content_type not in allowed_types:
+            raise HTTPException(
+                status_code=415,
+                detail=f"Unsupported file type. Allowed types: {', '.join(allowed_types)}"
+            )
+        
+        # Validate file size (e.g., 5MB limit)
+        MAX_FILE_SIZE = 10 * 1024 * 1024  # 5MB in bytes
+        file_size = 0
+        logo.file.seek(0, 2)  # Seek to end of file
+        file_size = logo.file.tell()  # Get current position (file size)
+        logo.file.seek(0)  # Reset to beginning
+        
+        if file_size > MAX_FILE_SIZE:
+            raise HTTPException(
+                status_code=413,
+                detail=f"File too large. Maximum size is {MAX_FILE_SIZE / (1024 * 1024)}MB"
+            )
+        
+        # Validate job_id
+        try:
+            query = {"_id": ObjectId(job_id)}
+        except Exception:
+            query = {"job_id": job_id}
+        
+        # Check if job exists
+        collection = db["job_roles"]
+        job = await collection.find_one(query)
+        if not job:
+            raise HTTPException(status_code=404, detail="Job not found")
+        
+        # Generate reference and upload logo
+        reference_number = generate_short_reference()
+        logo_url = await upload_to_blob_storage_company_logo(logo, reference_number)
+        
+        # Update job with new logo URL
+        result = await collection.update_one(
+            query, 
+            {"$set": {"logo_url": logo_url}}
+        )
+        
+        return {
+            "status": True,
+            "message": "Logo updated successfully",
+            "logo_url": logo_url
+        }
+    
     except HTTPException as e:
         raise e
     except Exception as e:
