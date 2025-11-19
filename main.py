@@ -5943,6 +5943,7 @@ async def get_job_details(job_id: str):
                 "about_the_company":job.get("about_the_company", ""),
                 "your_day_to_day":job.get("your_day_to_day", ""),
                 "social_links":job.get("social_links", ""),
+                "logo_url":job.get("logo_url", ""),
                 "created_at": (
                     job.get("created_at").isoformat()
                     if isinstance(job.get("created_at"), datetime)
