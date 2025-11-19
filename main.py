@@ -10,6 +10,7 @@ from pydantic_models import Item, ResumeData
 import aiohttp
 import json
 from pypdf import PdfReader
+import copy
 import io
 import logging
 from fastapi.responses import StreamingResponse
@@ -2333,8 +2334,8 @@ async def evaluate_question_openai(question: str, answer: str, question_number: 
         "skill_score": [1-5 or 0 for no signal],
         "trait_score": [1-5 or 0 for no signal],
         "question_score": [0-5 based on rubric scoring_logic]
-        "skill_reasoning": "Brief explanation of skill score based on the rubric's competencies and the answer.",
-        "trait_reasoning": "Brief explanation of trait score based on the rubric's characteristics and the answer.",
+        "skill_reasoning": "Brief explanation of skill demonsrated",
+        "trait_reasoning": "Brief explanation of trait demonstrated",
         "has_signal": [true/false],
         
     }}
@@ -2434,49 +2435,75 @@ async def generate_interview_summary(evaluated_questions: list, avg_skill_score:
 
 
     prompt = f"""
-    You are summarizing a sales interview evaluation for a {role} candidate.
+You are evaluating a {role} candidate based on their sales interview responses.
 
-    Individual Question Evaluations:
-    {evaluation_summary_text}
+EVALUATION DATA:
+Individual Question Evaluations:
+{evaluation_summary_text}
 
-    Overall Scores:
-    - Average Skill Score: {avg_skill_score:.2f}/5
-    - Average Trait Score: {avg_trait_score:.2f}/5 (This is an average of trait scores per question)
-    - Total Skill Score (sum of all valid skill scores): {total_skill_score}
-    - Total Trait Score (sum of all valid trait scores from questions): {total_trait_score_sum}
-    - Total Interview Score: {total_overall_score}
+SCORING BREAKDOWN:
+- Average Skill Score: {avg_skill_score:.2f}/5
+- Average Trait Score: {avg_trait_score:.2f}/5
+- Total Skill Score (sum): {total_skill_score}
+- Total Trait Score (sum): {total_trait_score_sum}
+- Total Interview Score: {total_overall_score}
 
-    Resume Context: {resume_text[:800]}...
+DECISION THRESHOLDS:
+{json.dumps(overall_decision_thresholds, indent=2)}
 
-    Write a concise summary covering:
+RESUME CONTEXT:
+{resume_text[:800]}...
 
-    1. KEY STRENGTHS: What this candidate does well (2-3 bullet points)
-    2. CONCERNS: Any areas of concern or weakness (1-2 bullet points)
-    3. RECOMMENDATION: Based on the combined total score of {total_overall_score}, and the following decision thresholds:
-       {json.dumps(overall_decision_thresholds, indent=2)}
-       Choose one: eighter "Strong hire", or "Interview Recommended" only.
-    4. Flags: if the candidates answer feels like AI generated, flag it as "might be AI_generated" in the summary, if it is genune then ignore this.
+INSTRUCTIONS:
+Generate a candidate evaluation summary in the EXACT format specified below. Do not deviate from this structure.
 
-    Focus on:
-    - Clear thinking and practical action demonstrated
-    - Sales mindset and approach
-    - Coachability and growth potential
-    - Overall fit for the role
-    Keep the summary under 200 words and be specific about what you observed.
+OUTPUT FORMAT (use exactly this structure):
 
-    Format as:
-    **Key Strengths:**
-    - [strength 1]
-    - [strength 2]
+Candidate Evaluation Summary
+Total Score: {total_overall_score} / 35
+Fit Category: [High Fit / Medium Fit / Low Fit / Not Recommended]
 
-    **Concerns:**
-    - [concern 1]
+Trait Scores
+Drive: X/5
+Resilience: X/5
+Curiosity: X/5
+Initiative: X/5
+Social Calibration: X/5
+Articulation: X/5
 
-    **Recommendation:** [Strong Hire/Interview Recommended]
+Skill Assessment
+[List each skill with categorical rating: Strong / Adequate / Developing / Weak]
 
-    **Reasoning:** [1-2 sentences explaining the recommendation based on Total Interview Score and specific observations from the interview.]
-    Donot mention any question number in the reasoning and summary.
-    """
+Strengths
+[List 3-5 specific, observable behaviours demonstrated in the interview. Be concrete and avoid generic statements. Do not mention question numbers.]
+
+Watchouts
+[List 2-4 concrete risks or concerns observed. Be specific about what behaviors or gaps were identified. Do not mention question numbers.]
+
+Final Recommendation
+[Choose one recommendation category and provide supporting reasoning:]
+- High Fit → Strong  fundamentals; likely to succeed.
+- Medium Fit → Good base; interview to confirm coachability.
+- Low Fit → Major gaps; risky hire.
+- Not Recommended → Does not demonstrate required behaviours.
+
+EVALUATION CRITERIA FOR FIT CATEGORY:
+- High Fit: Total score typically in top threshold range, strong trait scores across board, clear sales mindset
+- Medium Fit: Total score in middle threshold range, solid foundation with some development areas
+- Low Fit: Total score in lower threshold range, significant skill/trait gaps
+- Not Recommended: Total score below minimum threshold, fundamental behaviors missing
+
+AI DETECTION:
+If candidate responses appear AI-generated (overly formal, generic, lack of specific examples, unnatural language patterns), note this concern in Watchouts section.
+
+REQUIREMENTS:
+- Extract trait scores from the individual question evaluations
+- Provide categorical ratings (Strong/Adequate/Developing/Weak) for each skill assessed
+- Focus on observable behaviors, not hypotheticals
+- Be specific about sales mindset, practical action, coachability, and role fit
+- Never reference question numbers in Strengths, Watchouts, or Final Recommendation
+- Keep language clear and actionable
+"""
 
     try:
         async with aiohttp.ClientSession() as session:
@@ -5243,7 +5270,7 @@ async def get_all_jobs(
         skip = (page - 1) * page_size
 
         # Fetch jobs
-        jobs = await job_collection.find(filter_conditions).skip(skip).limit(page_size).to_list(length=page_size)
+        jobs = await job_collection.find(filter_conditions).sort("created_at", -1).skip(skip).limit(page_size).to_list(length=page_size)
         logger.info(f"Found {len(jobs)} jobs after pagination")
 
         jobs_with_manager = []
@@ -9351,7 +9378,57 @@ async def evaluate_interview(
         error_msg = f"Error evaluating interview: {str(e)}"
         logger.error(error_msg, exc_info=True)
         raise HTTPException(status_code=500, detail=error_msg)
-
+def personalize_question(question_text: str, session_data: dict) -> str:
+    """
+    Replace placeholders in interview questions with actual candidate data.
+    
+    Args:
+        question_text: The question with placeholders like <Name>, <previous company>
+        session_data: Dictionary containing candidate information
+    
+    Returns:
+        Personalized question string
+    """
+    replacements = {
+        "<Name>": session_data.get("candidate_name", "there"),
+        "<previous company>": session_data.get("previous_company", "your previous role"),
+        "<previous role>": session_data.get("previous_role", "your last position")
+    }
+    
+    personalized = question_text
+    for placeholder, value in replacements.items():
+        personalized = personalized.replace(placeholder, value)
+    
+    return personalized
+def personalize_job_config(job_config: dict, session_data: dict) -> dict:
+    """
+    Create a deep copy of job_config and replace all placeholders in questions.
+    
+    Args:
+        job_config: Original job configuration dictionary
+        session_data: Session data containing candidate information
+    
+    Returns:
+        Personalized copy of job_config with all placeholders replaced
+    """
+    # Create a deep copy to avoid modifying the original
+    personalized_config = copy.deepcopy(job_config)
+    
+    # Define replacements
+    replacements = {
+        "<Name>": session_data.get("candidate_name", "there"),
+        "<previous company>": session_data.get("previous_company", "your previous role"),
+        "<previous role>": session_data.get("previous_role", "your last position")
+    }
+    
+    # Replace placeholders in interview_questions
+    if "interview_questions" in personalized_config:
+        for question_obj in personalized_config["interview_questions"]:
+            if "question" in question_obj:
+                for placeholder, value in replacements.items():
+                    question_obj["question"] = question_obj["question"].replace(placeholder, value)
+    
+    return personalized_config
 @app.post("/video-interview/")
 async def conversational_interview(
     application_id: str = Form(None),
@@ -9432,12 +9509,19 @@ async def conversational_interview(
         if not user_account or "resume_text" not in user_account:
             raise HTTPException(status_code=400, detail="resume_text missing in user account")
         resume_text = user_account["resume_text"]
-
+        candidate_name = user_account["name"] if "name" in user_account else "there"
+        career_overview = user_account.get("career_overview", {})
+        company_history = career_overview.get("company_history", [])
+        if company_history:
+            company_history.sort(key=lambda x: x.get("start_date", ""), reverse=True)
+        previous_company = company_history[0].get("company_name", "your previous company")
         # Create session
         session = {
             "application_id": application_id,
             "user_id": candidate_user_id,
             "role": role_from_config,
+            "candidate_name": candidate_name,
+            "previous_company": previous_company,
             "job_id": job_id,
             "resume_text": resume_text,
             "current_question": 0,
@@ -9452,9 +9536,10 @@ async def conversational_interview(
         reset_count = user_profile.get("video_interview_reset_count", 0)
         processed_video_url=f'https://scooterdata.blob.core.windows.net/scooter-processed-videos/{application_id}_video_{reset_count}_master.m3u8'
         first_question = interview_questions[0]
+        first_question_text = personalize_question(first_question["question"], session)
         await collection.update_one(
             {"_id": ObjectId(session_id)},
-            {"$set": {"last_question": first_question["question"]}}
+            {"$set": {"last_question": first_question_text}}
         )
         await resume_collection.update_one(
             {"_id": ObjectId(application_id)},
@@ -9463,7 +9548,7 @@ async def conversational_interview(
         reset_count= user_profile.get("video_interview_reset_count", 0)
         return {
             "session_id": session_id,
-            "question": first_question["question"],
+            "question": first_question_text,
             "step": "question",
             "total_questions": len(interview_questions)+1,
             "reset_count": reset_count
@@ -9503,9 +9588,10 @@ async def conversational_interview(
                 "timestamp": datetime.utcnow()
             }
             answers.append(final_thoughts)
+            personalized_job_config = personalize_job_config(job_config, session)
             await collection.update_one({"_id": ObjectId(session_id)}, {"$set": {"answers": answers}})
             evaluate_commu = await evaluate_communication(session_id)
-            evaluation_result = await evaluate_intervieww(session_id, answers, resume_text, role, job_config)
+            evaluation_result = await evaluate_intervieww(session_id, answers, resume_text, role, personalized_job_config)
             key_highlights = await generate_key_highlights(session_id)
             await collection.update_one(
                 {"_id": ObjectId(session_id)},
@@ -9535,16 +9621,17 @@ async def conversational_interview(
 
         if next_question_idx < len(interview_questions):
             next_question = interview_questions[next_question_idx]
+            next_question_text = personalize_question(next_question["question"], session)
             await collection.update_one(
                 {"_id": ObjectId(session_id)},
                 {"$set": {
                     "current_question": next_question_idx,
-                    "last_question": next_question["question"]
+                    "last_question":next_question_text
                 }}
             )
             return {
                 "session_id": session_id,
-                "question": next_question["question"],
+                "question": next_question_text,
                 "step": "question"
             }
         else:
