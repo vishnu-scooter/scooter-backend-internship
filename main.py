@@ -5903,9 +5903,9 @@ async def get_job_details(job_id: str):
                 manager = None
 
         # Extract sections safely
-        basic_info = job.get("basicInfo", {})
-        exp_skills = job.get("experienceSkills", {})
-        compensations = job.get("compensations", {})
+        basic_info = job.get("basicInfo") or {}
+        exp_skills = job.get("experienceSkills") or {}
+        compensations = job.get("compensations") or {}
         DEFAULT_CONFIG = {
     "rounds": [
         {"type": "audio", "order": 1},
