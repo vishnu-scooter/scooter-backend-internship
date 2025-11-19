@@ -2341,6 +2341,7 @@ async def evaluate_question_openai(question: str, answer: str, question_number: 
 
     Focus on practical ability, real-world experience, and the mindset needed for success in this role.
     When determining scores, prioritize adherence to the structured 'scoring_logic' within the rubric.
+    In the reasoning fields, describe what the candidate demonstrated or lacked without referencing the numerical scores assigned.
     """
     logger.info(f"Evaluating Question {question_number} with rubric: {rubric_str}")
     try:
