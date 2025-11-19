@@ -5939,7 +5939,8 @@ async def get_job_details(job_id: str):
                 "what_success_looks_like":job.get("what_success_looks_like", ""),
                 "what_we_offer":job.get("what_we_offer", ""),
                 "who_thrives_here":job.get("who_thrives_here", ""),
-                "why_join_redacto":job.get("why_join_redacto", ""),
+                "why_join_us":job.get("why_join_us", ""),
+                "about_the_company":job.get("about_the_company", ""),
                 "your_day_to_day":job.get("your_day_to_day", ""),
                 "social_links":job.get("social_links", ""),
                 "created_at": (
@@ -12303,7 +12304,7 @@ async def update_job_role(job_id: str, payload: dict = Body(...),authorization: 
         # Check if payload is empty
         if not payload:
             raise HTTPException(status_code=400, detail="No fields to update")
-        ALLOWED_KEYS = {"the_role", "your_day_to_day", "what_we_offer", "why_join_redacto","what_success_looks_like","who_thrives_here","social_links"}
+        ALLOWED_KEYS = {"the_role", "your_day_to_day", "what_we_offer", "why_join_us","what_success_looks_like","who_thrives_here","social_links", "about_the_company"}
         invalid_keys = [key for key in payload.keys() if key not in ALLOWED_KEYS]
         if invalid_keys:
             raise HTTPException(
