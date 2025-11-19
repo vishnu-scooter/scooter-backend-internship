@@ -12,6 +12,7 @@ JOB_ID_GERMIN8_DELHI="68fe3b80b7a77fc1cbbdc5a3"
 JOB_ID_REDACTO="6900ccaea85418299e9bd90c"
 JOB_ID_REDACTO_SALES_HUNTER="69098e2a233109006d4fd37e"
 JOB_ID_REDACTO_PRESALES_BID="6909e9a2f1c9a8bd4e7884cc"
+JOB_ID_WIZCOMMERCE_SDR = "691d7d854d8df67fa2cb469b"
 # TestZeus Founding BDR Configuration
 TESTZEUS_FOUNDING_BDR_CONFIG = {
     "job_id": JOB_ID_TESTZEUS_FOUNDING_BDR,
@@ -2240,6 +2241,391 @@ REDACTO_PRESALES_BID_CONFIG = {
     ]
 }
 
+WIZCOMMERCE_SDR_CONFIG = {
+    "job_id": JOB_ID_WIZCOMMERCE_SDR,  # Replace with actual job ID
+    "job_role": "Sales Development Representative (SDR) - North America Outbound",
+    "interview_questions": [
+        {
+            "question_number": 1,
+            "question": "Let's get you warmed up, <Name>. What is the cold call opener you currently use with your prospects? Please repeat it for us word for word.",
+            "evaluation_type": "Q1_Cold_Call_Opener"
+        },
+        {
+            "question_number": 2,
+            "question": "Would you change anything in your opener when speaking to a U.S. prospect versus an India-based one, or a CEO versus an IT Director? What would you change and why?",
+            "evaluation_type": "Q2_Persona_Calibration"
+        },
+        {
+            "question_number": 3,
+            "question": "In this role you will make 100+ cold calls a day for the North America market. How would you structure your day? Walk us through it block by block.",
+            "evaluation_type": "Q3_Structuring_Call_Day"
+        },
+        {
+            "question_number": 4,
+            "question": "In your last role at <previous company>, what was your actual daily call volume? Try to share specific numbers and the approach you used.",
+            "evaluation_type": "Q4_Past_Call_Volume"
+        },
+        {
+            "question_number": 5,
+            "question": "How do you normally sequence your outreach across phone, email, LinkedIn, and CRM tasks? Walk us through your typical order and timing.",
+            "evaluation_type": "Q5_Sequencing_Channels"
+        },
+        {
+            "question_number": 6,
+            "question": "Now imagine you're reaching out to a new account for WizCommerce. What are the top 2–3 things you would research, and why? Feel free to use your phone and look things up as you answer.",
+            "evaluation_type": "Q6_Research_Depth"
+        },
+        {
+            "question_number": 7,
+            "question": "You've just finished 20 dials with no one picking up. You've got some time before your next batch. Walk me through what happens next. What do you actually do, what goes through your head, and how are you feeling in that moment?",
+            "evaluation_type": "Q7_Resilience_Reset"
+        }
+    ],
+    "evaluation_rubric": {
+        "Q1_Cold_Call_Opener": {
+            "prompt_instructions": "Evaluate opener execution, initiative, articulation, clarity, structure, value proposition, and confidence. Look for crisp delivery, compelling hook, and professional tone.",
+            "max_points": 5,
+            "scoring_logic": {
+                "Overall_Opener_Quality": [
+                    {"threshold": 0, "score": 1, "criteria": "No opener provided / completely unclear / hesitant / off-topic; cannot articulate a basic cold call introduction."},
+                    {"threshold": 1, "score": 2, "criteria": "Generic or rambling opener; lacks structure; no clear value proposition; sounds uncertain or scripted in a bad way."},
+                    {"threshold": 2, "score": 3, "criteria": "Clear opener with basic structure (name, company, reason); mentions value but generic; adequate but not compelling."},
+                    {"threshold": 3, "score": 4, "criteria": "Structured, confident, value-driven opener; mentions prospect context or pain point; sounds natural; good hook."},
+                    {"threshold": 4, "score": 5, "criteria": "Crisp, compelling opener with strong hook and pattern interrupt; personalizes quickly; clear value; confident and natural delivery; permission-based approach; acknowledges cold call appropriately."}
+                ]
+            }
+        },
+        "Q2_Persona_Calibration": {
+            "prompt_instructions": "Evaluate social calibration, curiosity, adaptability, and understanding of persona-based messaging. Look for specific adjustments in tone, language, value proposition, and approach based on geography and seniority.",
+            "max_points": 5,
+            "scoring_logic": {
+                "Overall_Persona_Calibration_Quality": [
+                    {"threshold": 0, "score": 1, "criteria": "Says same opener works for all personas; no awareness of differences; rigid approach."},
+                    {"threshold": 1, "score": 2, "criteria": "Acknowledges differences exist but only surface-level (e.g., 'be more formal'); no specific examples or reasoning."},
+                    {"threshold": 2, "score": 3, "criteria": "Identifies 1–2 relevant changes (e.g., tone shift for CEO, cultural sensitivity for regions) but limited depth; generic adaptations."},
+                    {"threshold": 3, "score": 4, "criteria": "Gives specific adjustments with clear reasoning: how value prop changes by role, time-zone awareness for NA, cultural nuances; demonstrates thoughtfulness."},
+                    {"threshold": 4, "score": 5, "criteria": "Detailed, persona-based calibration with concrete examples: CEO gets business outcome focus vs. IT Director gets technical details; US prospects get direct approach vs. India gets relationship-building; explains 'why' behind each choice; shows social intelligence and curiosity."}
+                ]
+            }
+        },
+        "Q3_Structuring_Call_Day": {
+            "prompt_instructions": "Evaluate drive, planning ability, process thinking, time management, and understanding of US market timing. Look for realistic structure covering call blocks, breaks, admin work, and peak calling hours for North America.",
+            "max_points": 5,
+            "scoring_logic": {
+                "Overall_Day_Structure_Quality": [
+                    {"threshold": 0, "score": 1, "criteria": "No structure or planning; vague statements like 'I'll just call all day'; no awareness of time zones or breaks."},
+                    {"threshold": 1, "score": 2, "criteria": "Mentions calling but no time blocks or structure; unclear how 100+ calls would be achieved; no consideration of US hours."},
+                    {"threshold": 2, "score": 3, "criteria": "Basic outline with some time blocks mentioned; understands need for breaks but limited detail; minimal workflow planning."},
+                    {"threshold": 3, "score": 4, "criteria": "Clear time blocks with reasoning (morning research, afternoon calling, email follow-ups); mentions US timezone alignment; includes admin and prep time; workable approach."},
+                    {"threshold": 4, "score": 5, "criteria": "Realistic, detailed plan covering: US market peak hours (EST/PST alignment), specific call blocks (e.g., 100 calls = 4 blocks of 25), research/prep time, CRM logging, breaks, email/LinkedIn follow-up; shows process maturity, drive, and understanding of sustainable high-volume outbound workflow."}
+                ]
+            }
+        },
+        "Q4_Past_Call_Volume": {
+            "prompt_instructions": "Evaluate drive, consistency, work ethic, and honesty. Look for specific numbers, consistency over time, and any optimization approaches. This is a key authenticity and track-record signal.",
+            "max_points": 5,
+            "scoring_logic": {
+                "Overall_Call_Volume_Track_Record": [
+                    {"threshold": 0, "score": 1, "criteria": "Avoids giving numbers; deflects or says 'it varied' without specifics; red flag for authenticity."},
+                    {"threshold": 1, "score": 2, "criteria": "Gives vague numbers ('around 30-40 maybe') or inconsistent; no approach or context; unclear track record."},
+                    {"threshold": 2, "score": 3, "criteria": "Provides real numbers (e.g., '50-60 calls per day'); minimal detail on consistency or approach; adequate but not impressive."},
+                    {"threshold": 3, "score": 4, "criteria": "Specific numbers with consistency context ('averaged 80 calls/day over 6 months'); mentions approach (list building, time blocks); credible track record."},
+                    {"threshold": 4, "score": 5, "criteria": "Specific, consistent numbers ('maintained 90-100 calls/day for my last 8 months'); explains approach and any optimizations (better lists, prime calling hours, follow-up discipline); demonstrates sustained drive and process improvement mindset."}
+                ]
+            }
+        },
+        "Q5_Sequencing_Channels": {
+            "prompt_instructions": "Evaluate tech fluency, process maturity, multi-channel orchestration, and CRM discipline. Look for logical sequencing, timing rationale, and understanding of modern sales engagement workflows.",
+            "max_points": 5,
+            "scoring_logic": {
+                "Overall_Sequencing_Maturity": [
+                    {"threshold": 0, "score": 1, "criteria": "Chaotic or no sequence; treats channels independently with no coordination; very weak process."},
+                    {"threshold": 1, "score": 2, "criteria": "Mentions channels but no logical order or timing; unclear how they connect; limited process thinking."},
+                    {"threshold": 2, "score": 3, "criteria": "Basic, correct sequence (e.g., 'call first, then email, then LinkedIn'); understands order but minimal timing or CRM discipline mentioned."},
+                    {"threshold": 3, "score": 4, "criteria": "Timed, logical multi-channel sequence with cadence thinking (e.g., 'call → email same day → LinkedIn connect next day → call again day 3'); mentions CRM logging; clear process."},
+                    {"threshold": 4, "score": 5, "criteria": "Advanced cadence with CRM + timing logic: explains multi-touch sequence over days/weeks, automates where possible, logs outcomes systematically, adjusts based on engagement signals; demonstrates sales engagement platform fluency and mature process thinking."}
+                ]
+            }
+        },
+        "Q6_Research_Depth": {
+            "prompt_instructions": "Evaluate curiosity, buyer understanding, strategic thinking, and ability to uncover relevant insights. Look for 2-3 specific research areas that would genuinely help with WizCommerce outreach (e.g., company tech stack, recent news, pain points, org structure).",
+            "max_points": 5,
+            "scoring_logic": {
+                "Overall_Research_Quality": [
+                    {"threshold": 0, "score": 1, "criteria": "No research approach mentioned; would go in blind; no curiosity demonstrated."},
+                    {"threshold": 1, "score": 2, "criteria": "Very shallow research (just visit website or LinkedIn profile); no depth or buyer-focused thinking."},
+                    {"threshold": 2, "score": 3, "criteria": "2–3 valid research items mentioned (company size, industry, recent news) but generic; basic awareness."},
+                    {"threshold": 3, "score": 4, "criteria": "Specific, relevant research areas for WizCommerce context (e.g., current e-commerce platform, tech stack, growth signals, decision-maker info); shows buyer understanding."},
+                    {"threshold": 4, "score": 5, "criteria": "Layered, strategic research insights: looks for pain point triggers (e.g., marketplace expansion, platform migration signals), workflow understanding, org chart/champion identification, intent signals; explains why each matters for personalization; demonstrates high curiosity and buyer-centric thinking."}
+                ]
+            }
+        },
+        "Q7_Resilience_Reset": {
+            "prompt_instructions": "Evaluate resilience, emotional intelligence, cognitive reset ability, and mental toughness. Look for concrete actions (not just feelings), self-awareness, and healthy coping mechanisms for rejection-heavy work.",
+            "max_points": 5,
+            "scoring_logic": {
+                "Overall_Resilience_Reset_Quality": [
+                    {"threshold": 0, "score": 1, "criteria": "Only discusses negative emotions (frustrated, defeated) with no actions or recovery plan; concerning for role fit."},
+                    {"threshold": 1, "score": 2, "criteria": "Vague coping ('I just keep going' or 'I stay positive') with no concrete reset routine; limited self-awareness."},
+                    {"threshold": 2, "score": 3, "criteria": "One concrete reset action mentioned (take a break, review script, listen to music) but minimal structure; basic awareness."},
+                    {"threshold": 3, "score": 4, "criteria": "Clear step-by-step routine with 2-3 specific actions (walk away for 5 min, review best calls, adjust approach, re-energize); shows self-management."},
+                    {"threshold": 4, "score": 5, "criteria": "Strong micro-routine demonstrating both emotional reset AND tactical adjustment: acknowledges feeling (normal/expected), takes physical break or mental reset (walk, stretch, music), reviews data/approach for improvement, reframes mindset (numbers game, next call is fresh), returns with renewed energy; shows mature resilience, self-awareness, and cognitive control essential for high-volume outbound."}
+                ]
+            }
+        }
+    },
+    "trait_rubric": {
+        "Drive": {
+            "prompt_instructions": "Evaluated from Q1 + Q3 + Q4 + Q7. Look for initiative, work ethic, consistency, self-motivation, and ability to maintain high activity levels. Average the scores from these questions.",
+            "criteria": [
+                {"score": 5, "description": "Exceptional drive: consistent high activity (90+ calls/day track record), proactive planning, self-motivated, maintains energy through rejection; structured approach to high-volume work."},
+                {"score": 4, "description": "Strong drive: solid call volume (70-90 calls/day), good planning discipline, sustains activity with clear approach."},
+                {"score": 3, "description": "Adequate drive: moderate activity levels (50-70 calls/day), basic work ethic, some structure but inconsistent."},
+                {"score": 2, "description": "Below-average drive: low activity, reactive approach, struggles with consistency or volume."},
+                {"score": 1, "description": "Poor drive: avoids specifics on activity, passive mindset, unlikely to sustain 100+ call/day requirement."}
+            ],
+            "source_question": [1, 3, 4, 7],
+            "calculation": "Average of Q1, Q3, Q4, Q7 scores"
+        },
+        "Resilience": {
+            "prompt_instructions": "Evaluated from Q3 + Q7. Look for mental toughness, emotional regulation, ability to bounce back from rejection, and sustainable approach to high-pressure, rejection-heavy work. Average the scores from these questions.",
+            "criteria": [
+                {"score": 5, "description": "Exceptional resilience: mature reset routine, reframes rejection positively, maintains energy and optimism, structured approach to managing emotional ups and downs."},
+                {"score": 4, "description": "Strong resilience: good coping mechanisms, recovers quickly from rejection, maintains consistent performance."},
+                {"score": 3, "description": "Adequate resilience: handles rejection adequately, some reset approach but inconsistent."},
+                {"score": 2, "description": "Below-average resilience: struggles with rejection, limited coping mechanisms, emotional impact on performance."},
+                {"score": 1, "description": "Poor resilience: overwhelmed by rejection, no healthy coping strategy, concerning for role fit."}
+            ],
+            "source_question": [3, 7],
+            "calculation": "Average of Q3, Q7 scores"
+        },
+        "Initiative": {
+            "prompt_instructions": "Evaluated from Q1 + Q6. Look for proactive behavior, self-starter mentality, research discipline, and ability to take ownership without prompting. Average the scores from these questions.",
+            "criteria": [
+                {"score": 5, "description": "Exceptional initiative: deep research discipline, proactive personalization, creates own processes, self-directed approach to improvement."},
+                {"score": 4, "description": "Strong initiative: consistent research, proactive follow-through, takes ownership of outcomes."},
+                {"score": 3, "description": "Adequate initiative: does basic research when required, follows established processes."},
+                {"score": 2, "description": "Below-average initiative: reactive, minimal research or personalization, needs prompting."},
+                {"score": 1, "description": "Poor initiative: passive approach, no research discipline, waits for direction."}
+            ],
+            "source_question": [1, 6],
+            "calculation": "Average of Q1, Q6 scores"
+        },
+        "Curiosity": {
+            "prompt_instructions": "Evaluated from Q2 + Q6. Look for genuine interest in understanding prospects, asking 'why', seeking patterns, and desire to learn about buyer contexts. Average the scores from these questions.",
+            "criteria": [
+                {"score": 5, "description": "Exceptional curiosity: asks layered questions, seeks to understand buyer workflows and pain points deeply, constantly learning and adapting approach."},
+                {"score": 4, "description": "Strong curiosity: researches thoroughly, adapts messaging based on insights, shows genuine interest."},
+                {"score": 3, "description": "Adequate curiosity: basic research and adaptation, follows playbook with some personalization."},
+                {"score": 2, "description": "Below-average curiosity: minimal research, template-based approach, surface-level understanding."},
+                {"score": 1, "description": "Poor curiosity: no interest in understanding prospects, one-size-fits-all approach."}
+            ],
+            "source_question": [2, 6],
+            "calculation": "Average of Q2, Q6 scores"
+        },
+        "Social_Calibration": {
+            "prompt_instructions": "Evaluated from Q2. Look for ability to read social context, adapt communication style to audience, understand cultural and hierarchical nuances, and adjust approach accordingly.",
+            "criteria": [
+                {"score": 5, "description": "Exceptional social calibration: sophisticated understanding of persona-based messaging, adapts tone/value prop fluidly by seniority and geography, demonstrates social intelligence."},
+                {"score": 4, "description": "Strong social calibration: clear persona adaptations with reasoning, understands cultural and role-based differences."},
+                {"score": 3, "description": "Adequate social calibration: basic awareness of different approaches needed, limited sophistication."},
+                {"score": 2, "description": "Below-average social calibration: recognizes differences exist but can't articulate how to adapt."},
+                {"score": 1, "description": "Poor social calibration: one-size-fits-all approach, no awareness of context."}
+            ],
+            "source_question": 2,
+            "calculation": "Q2 score directly"
+        },
+        "Articulation": {
+            "prompt_instructions": "Evaluated from Q1 + Q2. Look for clarity, structure, confidence in verbal communication, ability to explain thinking clearly, and natural delivery. Average the scores from these questions.",
+            "criteria": [
+                {"score": 5, "description": "Exceptional articulation: crisp, clear, confident communication; structured thinking; natural and compelling delivery; professional polish."},
+                {"score": 4, "description": "Strong articulation: clear communication with good structure, confident delivery, minor areas for polish."},
+                {"score": 3, "description": "Adequate articulation: gets points across adequately, some rambling or lack of structure, acceptable for role."},
+                {"score": 2, "description": "Below-average articulation: unclear communication, lacks structure, hesitant or confusing delivery."},
+                {"score": 1, "description": "Poor articulation: very unclear, rambling, or inarticulate; communication is a barrier."}
+            ],
+            "source_question": [1, 2],
+            "calculation": "Average of Q1, Q2 scores"
+        }
+    },
+    "skill_assessment": {
+        "Opener_Execution": {
+            "source_question": 1,
+            "rating_criteria": {
+                "Strong": "Score 4-5 on Q1: Structured, confident, value-driven opener with clear hook",
+                "Adequate": "Score 3 on Q1: Clear opener with basic structure, acceptable",
+                "Weak": "Score 1-2 on Q1: Generic, rambling, or unclear opener"
+            }
+        },
+        "Persona_Calibration": {
+            "source_question": 2,
+            "rating_criteria": {
+                "Strong": "Score 4-5 on Q2: Specific, thoughtful persona adaptations with reasoning",
+                "Adequate": "Score 3 on Q2: Basic awareness of differences, generic adaptations",
+                "Weak": "Score 1-2 on Q2: No differentiation or surface-level only"
+            }
+        },
+        "Outbound_Day_Planning": {
+            "source_question": 3,
+            "rating_criteria": {
+                "Structured": "Score 4-5 on Q3: Clear time blocks, realistic plan, US hours covered",
+                "Basic": "Score 3 on Q3: Some structure but limited detail or planning",
+                "Weak": "Score 1-2 on Q3: No clear structure or unrealistic approach"
+            }
+        },
+        "Activity_Consistency": {
+            "source_question": 4,
+            "rating_criteria": {
+                "High": "Score 4-5 on Q4: 70+ calls/day track record with consistency",
+                "Medium": "Score 3 on Q4: 50-70 calls/day with some consistency",
+                "Low": "Score 1-2 on Q4: <50 calls/day or no specific numbers provided"
+            }
+        },
+        "Sequencing": {
+            "source_question": 5,
+            "rating_criteria": {
+                "Mature": "Score 4-5 on Q5: Multi-touch cadence with timing logic and CRM discipline",
+                "Basic": "Score 3 on Q5: Correct channel order but limited timing or sophistication",
+                "Missing": "Score 1-2 on Q5: No clear sequence or chaotic approach"
+            }
+        },
+        "Research_Depth": {
+            "source_question": 6,
+            "rating_criteria": {
+                "High": "Score 4-5 on Q6: Strategic, buyer-focused research with pain point identification",
+                "Medium": "Score 3 on Q6: 2-3 valid research areas but generic",
+                "Low": "Score 1-2 on Q6: Minimal or no research approach"
+            }
+        },
+        "Reset_Routine": {
+            "source_question": 7,
+            "rating_criteria": {
+                "Strong": "Score 4-5 on Q7: Clear micro-routine with emotional + tactical components",
+                "Basic": "Score 3 on Q7: One concrete action but limited structure",
+                "Weak": "Score 1-2 on Q7: Emotional-only response or vague coping"
+            }
+        },
+        "Tech_Fluency": {
+            "source_question": 5,
+            "rating_criteria": {
+                "Fluent": "Score 4-5 on Q5: Demonstrates CRM, sales engagement platform knowledge",
+                "Limited": "Score 3 on Q5: Basic tech awareness but not sophisticated",
+                "Not_Shown": "Score 1-2 on Q5: Minimal tech fluency demonstrated"
+            }
+        }
+    },
+    "authenticity_signal": {
+        "prompt_instructions": "Applied across all answers to adjust final score based on originality, natural phrasing, personal examples, and conversational tone versus AI-generated or copied content. Pay special attention to Q1 (must sound like real cold call) and Q4 (must have specific numbers).",
+        "weight": 0.05,
+        "categories": [
+            {
+                "category": "Authentic_Original",
+                "description": "Natural, conversational phrasing with personal examples or specific details; minor grammar imperfections acceptable; genuine reasoning; sounds like a real SDR speaking; Q1 sounds like actual cold call delivery; Q4 has specific numbers.",
+                "score_adjustment": 0
+            },
+            {
+                "category": "Assisted_Personalized",
+                "description": "Polished or structured but includes personal context, specific examples, and reasoning; adapted thoughtfully beyond templates; mostly authentic with some AI assistance for structure.",
+                "score_adjustment": -2
+            },
+            {
+                "category": "AI_Generated_Low_Authenticity",
+                "description": "Overly formal, robotic phrasing; generic or repetitive; lacks human markers or personal specifics; no natural imperfections; Q1 sounds scripted not delivered; Q4 avoids specific numbers; likely copied AI output.",
+                "score_adjustment": -5
+            }
+        ]
+    },
+    "scoring_summary": {
+        "section_1_opener_articulation": {
+            "name": "Opener Execution & Articulation",
+            "max_points": 10,
+            "questions": [1, 2],
+            "description": "Q1 (5 pts) + Q2 (5 pts) = Ability to deliver compelling cold call and adapt by persona"
+        },
+        "section_2_planning_drive": {
+            "name": "Planning, Drive & Activity Track Record",
+            "max_points": 10,
+            "questions": [3, 4],
+            "description": "Q3 (5 pts) + Q4 (5 pts) = Ability to structure 100+ call days and proven activity consistency"
+        },
+        "section_3_process_maturity": {
+            "name": "Process Maturity & Tech Fluency",
+            "max_points": 5,
+            "questions": [5],
+            "description": "Q5 (5 pts) = Multi-channel sequencing and CRM discipline"
+        },
+        "section_4_research_curiosity": {
+            "name": "Research Depth & Buyer Curiosity",
+            "max_points": 5,
+            "questions": [6],
+            "description": "Q6 (5 pts) = Ability to research accounts and uncover relevant insights"
+        },
+        "section_5_resilience": {
+            "name": "Resilience & Mental Toughness",
+            "max_points": 5,
+            "questions": [7],
+            "description": "Q7 (5 pts) = Reset routine and ability to handle rejection-heavy work"
+        },
+        "total_points": 35
+    },
+    "overall_decision_thresholds": [
+        {
+            "score_range": [30, 35],
+            "decision": "High Fit (Strong Hire)",
+            "action": "Exceptional SDR fundamentals with proven track record; demonstrates drive, resilience, process maturity, and social calibration; authentic responses; very likely to succeed in high-volume North America outbound role; extend offer."
+        },
+        {
+            "score_range": [24, 29],
+            "decision": "Medium Fit (Hire with Manager Interview)",
+            "action": "Solid SDR base with good fundamentals in most areas; some gaps in process maturity or track record but demonstrates coachability and core traits (drive, resilience, curiosity); interview with hiring manager to confirm cultural fit and willingness to learn; likely trainable to success."
+        },
+        {
+            "score_range": [18, 23],
+            "decision": "Low Fit (Borderline - Risky Hire)",
+            "action": "Understands SDR basics but shows inconsistent execution, limited track record, or weak areas in critical traits (drive, resilience, or social calibration); lacks authenticity or process thinking; significant coaching would be required; high risk of underperformance in 100+ calls/day environment; proceed with caution or pass."
+        },
+        {
+            "score_range": [0, 17],
+            "decision": "Not Recommended (Reject)",
+            "action": "Does not demonstrate required SDR competencies, traits, or track record; poor opener execution, minimal activity history, weak resilience signals, or low authenticity; insufficient foundation for high-volume outbound role; reject."
+        }
+    ],
+    "output_format": {
+        "structure": """
+Candidate Evaluation Summary
+Total Score: X / 35
+Fit Category: High Fit / Medium Fit / Low Fit / Not Recommended
+
+Trait Scores
+Drive: X/5
+Resilience: X/5
+Curiosity: X/5
+Initiative: X/5
+Social Calibration: X/5
+Articulation: X/5
+
+Skill Assessment
+Opener Execution: Strong / Adequate / Weak
+Persona Calibration: Strong / Adequate / Weak
+Outbound Day Planning: Structured / Basic / Weak
+Activity Consistency: High / Medium / Low
+Sequencing: Mature / Basic / Missing
+Research Depth: High / Medium / Low
+Reset Routine: Strong / Basic / Weak
+Tech Fluency: Fluent / Limited / Not Shown
+
+Strengths
+(List 3–5 specific, observable behaviors from their answers)
+
+Watchouts
+(List 2–4 concrete risks or development areas)
+
+Final Recommendation
+[Decision based on score range with specific action and reasoning]
+"""
+    }
+}
+
 # Master dictionary to hold all job configurations, keyed by job_id
 JOB_CONFIGS = {
     JOB_ID_ZENOTI_SENIOR_ACCOUNT_EXECUTIVE: ZENOTI_SENIOR_ACCOUNT_EXECUTIVE_CONFIG,
@@ -2253,6 +2639,7 @@ JOB_CONFIGS = {
     JOB_ID_REDACTO: REDACTO_CONFIG,
     JOB_ID_REDACTO_SALES_HUNTER: REDACTO_SALES_HUNTER_CONFIG,
     JOB_ID_REDACTO_PRESALES_BID: REDACTO_PRESALES_BID_CONFIG,
+    JOB_ID_WIZCOMMERCE_SDR: WIZCOMMERCE_SDR_CONFIG,
     # Add other job configurations here, using their respective job_ids as keys
 }
 
