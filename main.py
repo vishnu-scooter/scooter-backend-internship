@@ -5220,10 +5220,11 @@ async def get_all_jobs(
         job_collection = db["job_roles"]
         hiring_manager_collection = db["hiring_managers"]
 
-        # Filter only new-format jobs
         filter_conditions = {
             "is_active": True,
-            "basicInfo": {"$exists": True}
+            "basicInfo": {"$exists": True, "$ne": None},
+            "experienceSkills": {"$exists": True, "$ne": None},
+            "compensations": {"$exists": True, "$ne": None}
         }
 
         # Add search filter
