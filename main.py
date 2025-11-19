@@ -15,7 +15,7 @@ import logging
 from fastapi.responses import StreamingResponse
 import sys
 import csv
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from pathlib import Path
 import re
 import random
@@ -50,7 +50,7 @@ from sendgrid.helpers.mail import Mail
 import string
 from create_jd import call_openai_for_jd
 from sarvamai import SarvamAI
-from create_meetings import create_meeting
+from create_meetings import create_meeting,create_event_without_meet
 from user_ticketing import send_support_conformation_email, notify_developer_of_new_ticket, generate_short_reference,upload_to_blob_storage_screenshot
 # Configure logging
 logging.basicConfig(
@@ -12094,8 +12094,108 @@ async def create_meeting_endpoint(req: MeetingRequest,authorization: str = Heade
         logger.error(error_msg, exc_info=True)
         return JSONResponse(content={"status": False, "message": error_msg}, status_code=500)
     
+class EventRequest(BaseModel):
+    start_time: str  # ISO format datetime string
+    # calendar_id: Optional[str] = "primary"
+    # send_updates: Optional[str] = "all"
 
-# async def test(video_summary: str, job_fit_assessment:str) -> str:
+
+@app.post("/remindlater-video-interview/")
+async def create_event_endpoint(req: EventRequest, authorization: str = Header(None)):
+    try:
+        # Authenticate user
+        try:
+            current_user = await get_current_user(authorization)
+        except HTTPException as e:
+            return JSONResponse(
+                content={"status": False, "message": "Invalid or expired token"},
+                status_code=401
+            )
+        
+        # Check if user is manager
+        if current_user["role"] != "candidate":
+            return JSONResponse(
+                content={"status": False, "message": "Only candidates can create events"},
+                status_code=403
+            )
+        
+        # Fetch organizer email from user_accounts collection
+        user_collection = db["user_accounts"]
+        user_record = await user_collection.find_one({"_id": ObjectId(current_user["user_id"])})
+   
+        
+        if not user_record or "email" not in user_record:
+            return JSONResponse(
+                content={"status": False, "message": "Organizer email not found"},
+                status_code=404
+            )
+        
+        organizer_email = user_record["email"]
+        logger.info(f"Organizer email: {organizer_email}")
+        summary = "Remainder to take your video interview"
+        description= "login in to https://thescooter.ai/candidate/login"
+        # Parse start_time and calculate end_time (30 mins later)
+        try:
+            start_dt = datetime.fromisoformat(req.start_time)
+            end_dt = start_dt + timedelta(minutes=30)
+        except Exception:
+            raise HTTPException(
+                status_code=400, 
+                detail="start_time must be a valid ISO datetime string"
+            )
+        
+        # Create event without meet link
+        try:
+            result = create_event_without_meet(
+                attendee_email=organizer_email,
+                start_time=start_dt,
+                end_time=end_dt,
+                calendar_id="primary",
+                summary=summary,
+                description=description,
+                send_updates="all"
+            )
+            
+            # Save event details to database
+            event_doc = {
+                "attendee_email": organizer_email,
+                "summary": summary,
+                "description": description,
+                "start_time": start_dt,
+                "end_time": end_dt,
+                "event_id": result.get("eventId", ""),
+                "html_link": result.get("htmlLink", ""),
+                "created_by": current_user["user_id"],
+                "created_at": datetime.utcnow()
+            }
+            
+            collection = db["events"]
+            await collection.insert_one(event_doc)
+            
+            return JSONResponse(
+                content={
+                    "status": True,
+                    "message": "Event created successfully",
+                    "data": {
+                        "event_id": result.get("eventId", ""),
+                        "event_link": result.get("htmlLink", ""),
+                        "organizer_email": organizer_email,
+                        "start_time": start_dt.isoformat(),
+                        "end_time": end_dt.isoformat()
+                    }
+                },
+                status_code=200
+            )
+        except RuntimeError as e:
+            raise HTTPException(status_code=500, detail=str(e))
+            
+    except Exception as e:
+        error_msg = f"Error creating event: {str(e)}"
+        logger.error(error_msg, exc_info=True)
+        return JSONResponse(
+            content={"status": False, "message": error_msg}, 
+            status_code=500
+        )# async def test(video_summary: str, job_fit_assessment:str) -> str:
 #     prompt = f"""
 # You are an expert recruiter.
 
