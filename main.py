@@ -12306,7 +12306,7 @@ async def update_job_role(job_id: str, payload: dict = Body(...),authorization: 
         # Check if payload is empty
         if not payload:
             raise HTTPException(status_code=400, detail="No fields to update")
-        ALLOWED_KEYS = {"the_role", "your_day_to_day", "what_we_offer", "why_join_us","what_success_looks_like","who_thrives_here","social_links", "about_the_company"}
+        ALLOWED_KEYS = {"the_role", "your_day_to_day", "what_we_offer", "why_join_us","what_success_looks_like","who_thrives_here","social_links", "about_the_company","basicInfo","experienceSkills","compensations"}
         invalid_keys = [key for key in payload.keys() if key not in ALLOWED_KEYS]
         if invalid_keys:
             raise HTTPException(
