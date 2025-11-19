@@ -3316,16 +3316,91 @@ Resume:
             except (KeyError, IndexError):
                 raise HTTPException(status_code=500, detail="Invalid response format from LLM")
             
+# async def generate_job_fit_summary(resume_text: str, job_description:str) -> str:
+#     prompt = f"""
+# You are an expert recruiter. 
+# Provide a Job Fit Assessment for this resume and job description using the following weighted scoring system:
+# in your analysis do not return an excessive explanation, keep it concise and to the point. 
+# Resume:
+# {resume_text}
+# Job Description:
+# {job_description}
+# Scoring Criteria (Total 100 points):
+# EXPERIENCE MATCH (15 points)
+# - Sales Years:
+#   - Meets requirement exactly = 15 pts
+#   - Exceeds by 1-2 years = 15 pts
+#   - Exceeds by 3+ years = 10 pts (overqualified)
+#   - 1 year short = 5 pts
+#   - 2+ years short = 0 pts
+# MARKET ALIGNMENT (40 points)
+# - Industry Match:
+#   - Exact match = 15 pts
+#   - Related industry = 10 pts
+#   - Different but transferable = 5 pts
+#   - Completely different = 0 pts
+# - Product Type:
+#   - Same product category = 15 pts
+#   - Similar complexity = 10 pts
+#   - Different product = 3 pts
+#   - No product sales experience = 0 pts
+# - Buyer Persona:
+#   - Same decision makers = 10 pts
+#   - Similar seniority = 6 pts
+#   - Different buyers = 2 pts
+#   - No B2B experience = 0 pts
+# PERFORMANCE MATCH (25 points)
+# - Quota Achievement:
+#   - Consistently >110% = 25 pts
+#   - 100–110% average = 20 pts
+#   - 90–100% = 10 pts
+#   - <90% or no data = 0 pts
+# REQUIREMENTS FIT (20 points)
+# - Tool Proficiency:
+#   - Has required tools = 8 pts
+#   - Has similar tools = 4 pts
+#   - No relevant tools = 0 pts
+# - Sales Process:
+#   - Matches exactly = 7 pts
+#   - Transferable skills = 4 pts
+#   - Different process = 1 pt
+# - Compensation:
+#   - Within budget = 5 pts
+#   - 10–20% over = 2 pts
+#   - 20%+ over = 0 pts
+# Classification:
+# - HIGH FIT: 70–100 points
+# - MEDIUM FIT: 40–69 points
+# - LOW FIT: 0–39 points
+# Output Format:
+# Job Fit Assessment: [HIGH/MEDIUM/LOW]
+# Total Score: [X/100]
+# Score Breakdown:
+# - Experience Match: [X/15]
+# - Market Alignment: [X/40]
+# - Performance Match: [X/25]
+# - Requirements Fit: [X/20]
+# Rationale (3–5 bullets):
+# - Compare experience years vs. requirement
+# - Industry/product/buyer persona alignment
+# - Sales skills & quota achievement evidence
+# - Tools/process/compensation alignment
+# - Highlight promotions or multiple roles at the same company (if applicable)
+# """
 async def generate_job_fit_summary(resume_text: str, job_description:str) -> str:
     prompt = f"""
 You are an expert recruiter. 
 Provide a Job Fit Assessment for this resume and job description using the following weighted scoring system:
 in your analysis do not return an excessive explanation, keep it concise and to the point. 
+
 Resume:
 {resume_text}
+
 Job Description:
 {job_description}
+
 Scoring Criteria (Total 100 points):
+
 EXPERIENCE MATCH (15 points)
 - Sales Years:
   - Meets requirement exactly = 15 pts
@@ -3333,6 +3408,7 @@ EXPERIENCE MATCH (15 points)
   - Exceeds by 3+ years = 10 pts (overqualified)
   - 1 year short = 5 pts
   - 2+ years short = 0 pts
+
 MARKET ALIGNMENT (40 points)
 - Industry Match:
   - Exact match = 15 pts
@@ -3349,12 +3425,14 @@ MARKET ALIGNMENT (40 points)
   - Similar seniority = 6 pts
   - Different buyers = 2 pts
   - No B2B experience = 0 pts
+
 PERFORMANCE MATCH (25 points)
 - Quota Achievement:
   - Consistently >110% = 25 pts
   - 100–110% average = 20 pts
   - 90–100% = 10 pts
   - <90% or no data = 0 pts
+
 REQUIREMENTS FIT (20 points)
 - Tool Proficiency:
   - Has required tools = 8 pts
@@ -3368,24 +3446,28 @@ REQUIREMENTS FIT (20 points)
   - Within budget = 5 pts
   - 10–20% over = 2 pts
   - 20%+ over = 0 pts
+
 Classification:
 - HIGH FIT: 70–100 points
 - MEDIUM FIT: 40–69 points
 - LOW FIT: 0–39 points
+
 Output Format:
 Job Fit Assessment: [HIGH/MEDIUM/LOW]
 Total Score: [X/100]
+
 Score Breakdown:
 - Experience Match: [X/15]
 - Market Alignment: [X/40]
 - Performance Match: [X/25]
 - Requirements Fit: [X/20]
+
 Rationale (3–5 bullets):
-- Compare experience years vs. requirement
-- Industry/product/buyer persona alignment
-- Sales skills & quota achievement evidence
-- Tools/process/compensation alignment
-- Highlight promotions or multiple roles at the same company (if applicable)
+- Compare experience years vs. requirement without mentioning points
+- Industry/product/buyer persona alignment without mentioning points
+- Sales skills & quota achievement evidence without mentioning points
+- Tools/process/compensation alignment without mentioning points
+- Highlight promotions or multiple roles at the same company (if applicable) without mentioning points
 """
 
     async with aiohttp.ClientSession() as session:
