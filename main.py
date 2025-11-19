@@ -12223,7 +12223,7 @@ async def create_event_endpoint(req: EventRequest, authorization: str = Header(N
         
         organizer_email = user_record["email"]
         logger.info(f"Organizer email: {organizer_email}")
-        summary = "Remainder to take your video interview"
+        summary = "Reminder to take your video interview"
         description= "login in to https://thescooter.ai/candidate/login"
         # Parse start_time and calculate end_time (30 mins later)
         try:
