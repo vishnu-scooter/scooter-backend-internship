@@ -8452,7 +8452,7 @@ async def candidate_login(body: CandidateLoginRequest):
         resume_collection = db["resume_profiles"]
         job_collection = db["job_roles"]
 
-        applications_cursor = resume_collection.find({"user_id": candidate_id})
+        applications_cursor = resume_collection.find({"user_id": candidate_id}).sort("created_at", 1)
         applications = await applications_cursor.to_list(length=None)
 
         # Collect all job_ids to fetch jobs in bulk
@@ -8532,7 +8532,7 @@ async def get_candidate_profile(authorization: str = Header(...)):
         resume_collection = db["resume_profiles"]
         job_collection = db["job_roles"]
 
-        applications_cursor = resume_collection.find({"user_id": candidate_id})
+        applications_cursor = resume_collection.find({"user_id": candidate_id}).sort("created_at", 1)
         applications = await applications_cursor.to_list(length=None)
 
         # Collect all job_ids to fetch jobs in bulk
@@ -12124,7 +12124,7 @@ class MeetingRequest(BaseModel):
     start_time: str
     end_time: str
     calendar_id: Optional[str] = "primary"
-    summary: Optional[str] = "Mentorship Meeting"
+    summary: Optional[str] = "Interview"
     description: Optional[str] = None
     send_updates: Optional[str] = "all"
 
