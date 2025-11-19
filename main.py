@@ -12459,11 +12459,14 @@ async def update_job_logo(
         logo.file.seek(0)  # Reset to beginning
         
         if file_size > MAX_FILE_SIZE:
-            raise HTTPException(
-                status_code=413,
-                detail=f"File too large. Maximum size is {MAX_FILE_SIZE / (1024 * 1024)}MB"
-            )
-        
+            # raise HTTPException(
+            #     status_code=413,
+            #     detail=f"File too large. Maximum size is {MAX_FILE_SIZE / (1024 * 1024)}MB"
+            # )
+            return JSONResponse(
+            content={"status": False, "message": f"File too large. Maximum size is {MAX_FILE_SIZE / (1024 * 1024)}MB"},
+            status_code=200
+        )
         # Validate job_id
         try:
             query = {"_id": ObjectId(job_id)}
