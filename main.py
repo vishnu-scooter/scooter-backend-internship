@@ -12419,7 +12419,7 @@ async def update_job_role(job_id: str, payload: dict = Body(...),authorization: 
         raise e
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-
+#this updates job logo
 @app.post("/update-job-logo/")
 async def update_job_logo(
     job_id: str,
