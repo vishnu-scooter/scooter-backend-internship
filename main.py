@@ -62,8 +62,6 @@ logging.basicConfig(
 )
 
 logger = logging.getLogger(__name__)
-logger.info("application startup good")
-
 # Load environment variables
 load_dotenv()
 
@@ -145,11 +143,10 @@ def is_likely_resume(text: str) -> bool:
     #     logger.warning("Failed resume pattern checks")
     #     return False
     
-    logger.info("Resume pattern check successful")
+    
     return True
 
 async def extract_text_from_pdf(pdf_file: UploadFile) -> str:
-    logger.info(f"Starting PDF text extraction for file: {pdf_file.filename}")
     try:
         content = await pdf_file.read()
         pdf_reader = PdfReader(io.BytesIO(content))
@@ -171,14 +168,14 @@ async def extract_text_from_pdf(pdf_file: UploadFile) -> str:
         # if not is_likely_resume(text):
         #     raise HTTPException(status_code=400, detail="The uploaded document does not appear to be a valid resume")
         
-        logger.info(f"Successfully extracted text from {len(pdf_reader.pages)} pages")
+    
         return text
     except Exception as e:
         logger.error(f"Error extracting text from PDF: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Error processing PDF: {str(e)}")
 
 async def parse_resume_with_azure(text: str) -> dict:
-    logger.info("Starting resume parsing with Azure OpenAI")
+
     prompt = f"""Please analyze the following resume and extract the information in the exact JSON structure shown below. If any information is not available, use empty strings ("") for text fields, empty arrays ([]) for lists, and false for booleans. Do not include any additional text or explanation, only return the JSON object.
 
 IMPORTANT: You MUST extract company history from the resume. Look for sections like "Work Experience", "Professional Experience", "Employment History", etc. For each role, extract:
@@ -421,12 +418,6 @@ Remember to:
                         
                         # Update the sorted company history
                         parsed_data["career_overview"]["company_history"] = company_history
-                        
-                        logger.info(f"Processed company history with {len(company_history)} companies")
-                        logger.info(f"Total experience: {parsed_data['career_overview']['total_years_experience']} years")
-                        logger.info(f"Average tenure: {parsed_data['career_overview']['average_tenure_per_role']} years")
-                        
-                        logger.info("Successfully parsed and validated resume data")
                         return parsed_data
                     except json.JSONDecodeError as e:
                         error_msg = f"Invalid JSON response from Azure OpenAI API: {str(e)}\nContent: {content[:200]}..."
@@ -534,7 +525,7 @@ async def create_user_account(user: UserAccount):
     """
     Create a new user account with email, name, and phone number.
     """
-    logger.info(f"Creating user account for email: {user.email}")
+
     collection = db["user_accounts"]
     
     existing_user = await collection.find_one({"email": user.email})
@@ -548,8 +539,6 @@ async def create_user_account(user: UserAccount):
     
     result = await collection.insert_one(user_dict)
     user_id = str(result.inserted_id)
-    
-    logger.info(f"User account created with ID: {user_id}")
     return JSONResponse(
         status_code=200,
         content={
@@ -565,7 +554,6 @@ class UserAccountLogin(BaseModel):
 
 @app.post("/user-login/")
 async def login(request: UserAccountLogin):
-    logger.info(f"Login request for email: {request.email}")
     collection = db["user_accounts"]
     profile_collection = db["resume_profiles"]
     job_collection = db["job_roles"]
@@ -582,8 +570,6 @@ async def login(request: UserAccountLogin):
                 "data": {}
             }
         )
-
-    logger.info(f"User found: {user['_id']}")
 
     # Get last application ID
     application_ids = user.get("application_ids", [])
@@ -640,7 +626,6 @@ async def get_candidate_profile(
     """
     Get candidate profile by account ID.
     """
-    logger.info(f"Fetching candidate profile for account ID: {account_id}")
     collection = db["user_accounts"]
 
     if not ObjectId.is_valid(account_id):
@@ -713,7 +698,6 @@ async def parse_resume(
     Parse a resume and extract structured information.
     Upload to Azure Blob Storage even if text extraction fails.
     """
-    logger.info(f"Received resume parsing request for file: {file.filename}")
     collection = db["resume_profiles"]
     user_accounts = db["user_accounts"]
 
@@ -775,8 +759,6 @@ async def parse_resume(
                 file=io.BytesIO(content)
             )
             resume_url, resume_blob_name = await upload_to_blob_storage_resume(file_for_blob, "resume")
-            logger.info(f"Resume uploaded to blob: {resume_url}")
-
         # Try extracting text from the file
         file_for_text = UploadFile(
             filename=file.filename,
@@ -789,7 +771,6 @@ async def parse_resume(
             # Pass BytesIO so PyPDF and OCR both can reuse the same content
             text = await extract_text_from_pdf(UploadFile(filename=file_for_text.filename, file=io.BytesIO(file_bytes)))
             if not text:
-                logger.info("PyPDF returned empty text, falling back to Azure OCR")
                 text = await extract_text_with_ocr(UploadFile(filename=file_for_text.filename, file=io.BytesIO(file_bytes)))
         except HTTPException as e:
             logger.warning(f"PyPDF extraction failed: {e.detail}, falling back to Azure OCR")
@@ -858,8 +839,6 @@ async def parse_resume(
             },
             upsert=True
         )
-
-        logger.info("Successfully processed resume and created profile")
         return JSONResponse(
             status_code=200,
             content={
@@ -885,7 +864,6 @@ async def update_resume(
     Update resume for user if the file is readable (text can be extracted).
     Upload to blob and update resume_url and resume_text in DB.
     """
-    logger.info(f"Received resume update request for user_id: {user_id}")
     try:
         content = await file.read()
         if not content:
@@ -942,8 +920,6 @@ class InterviewQuestionRequest(BaseModel):
     #language: str
 
 async def generate_interview_questions(profile_id: str, posting_title: str) -> List[str]:
-    logger.info(f"Generating interview questions for {posting_title} position")
-    
     # Fetch resume profile from database
     collection = db["resume_profiles"]
     profile = await collection.find_one({"_id": ObjectId(profile_id)})
@@ -1066,8 +1042,6 @@ async def generate_interview_questions(profile_id: str, posting_title: str) -> L
             questions.append(
                 "I noticed a couple short stints — totally up to you, but happy to hear more if you'd like to share."
             )
-
-    logger.info("Successfully generated interview questions")
     return questions
 
 async def generate_audio_intv_questions(resume_text: str)  -> list[str]:
@@ -1146,7 +1120,6 @@ async def generate_questions(request: InterviewQuestionRequest):
     """
     Generate interview questions based on stored resume data and job requirements
     """
-    logger.info(f"Received request to generate questions for {request.posting_title} position")
     try:
         collection = db["resume_profiles"]
         profile = await collection.find_one({"_id": ObjectId(request.profile_id)})
@@ -1190,7 +1163,6 @@ class InterviewEvaluation(BaseModel):
     language: Optional[str] = "en-IN"  # Language of the user's answers
 
 async def evaluate_answer(question: str, answer: str, i: int) -> AnswerEvaluation:
-    logger.info(f"Evaluating answer for question: {question[:100]}...")
 
     prompt = f"""
 Evaluate the following interview Q&A based on the scoring framework for the given question number, and return a JSON response.
@@ -1311,8 +1283,6 @@ Only return a valid JSON object. Do not include any markdown or explanations.
                     # Validate numeric score ranges (generic safeguard: 0–100 max, 
                     # but actual max depends on question type — normalization happens later)
                     evaluation["score"] = max(0, min(100, evaluation["score"]))
-
-                    logger.info("Successfully evaluated answer")
                     return AnswerEvaluation(**evaluation)
 
                 except (KeyError, json.JSONDecodeError, ValueError) as e:
@@ -1359,7 +1329,6 @@ async def send_interview_result_email(email: str, passed: bool, otp: Optional[st
         )
         
         response = sg.send(message)
-        logger.info(f"Email sent successfully to {email}")
         return True
     except Exception as e:
         logger.error(f"Error sending email: {str(e)}")
@@ -1422,7 +1391,6 @@ async def evaluate_interview(evaluation: InterviewEvaluation):
     Evaluate interview Q&A pairs and provide detailed feedback.
     Also updates the audio interview status in the database based on average score.
     """
-    logger.info("Received interview evaluation request")
     try:
         collection = db["resume_profiles"]
         audio_results_collection = db["audio_interview_results"]
@@ -1451,7 +1419,6 @@ async def evaluate_interview(evaluation: InterviewEvaluation):
                 "answer": qa_pair.answer,
                 "evaluation": evaluation_result.dict()
             })
-            logger.info(f"Evaluated Q{i}")
 
             # Collect score
             if hasattr(evaluation_result, "score"):
@@ -1555,7 +1522,6 @@ async def structured_ai_interview_questions(file: UploadFile = File(...), role: 
     Generate structured AI interview questions for Grit, Learning Agility, and Commercial Acumen traits.
     Accepts a PDF file upload and a role string.
     """
-    logger.info("Received request for structured AI interview questions (file upload)")
     import random
 
     # Extract resume text from PDF
@@ -2240,9 +2206,7 @@ async def evaluate_intervieww(session_id: str, answers: list, resume_text: str, 
                 resume_text,
                 role,
                 evaluation_rubric.get(evaluation_type)
-            )
-            logger.info(f"Evaluating Q{q_num} with type {evaluation_type}")
-            logger.info(f"Evaluation for Q{q_num}: {evaluation}")   
+            ) 
             question_evaluation = {
                 "question_number": q_num,
                 "question": question_text,
@@ -2344,7 +2308,6 @@ async def evaluate_question_openai(question: str, answer: str, question_number: 
     When determining scores, prioritize adherence to the structured 'scoring_logic' within the rubric.
     In the reasoning fields, describe what the candidate demonstrated or lacked without referencing the numerical scores assigned.
     """
-    logger.info(f"Evaluating Question {question_number} with rubric: {rubric_str}")
     try:
         async with aiohttp.ClientSession() as session:
             async with session.post(
@@ -2955,7 +2918,6 @@ async def evaluate_communication(session_id: str):
     """
     Evaluate communication skills based on interview answers stored in the database.
     """
-    logger.info(f"Evaluating communication for session {session_id}")
     
     try:
         # Fetch session from database
@@ -3090,7 +3052,6 @@ async def generate_key_highlights(session_id: str):
     """
     Extract key highlights from interview answers stored in the database.
     """
-    logger.info(f"Extracting interview highlights for session {session_id}")
     
     try:
         # Fetch session from database
@@ -4003,7 +3964,6 @@ async def evaluate_sales_conversation(session_id: str):
     Evaluate a sales conversation based on multiple dimensions including structured thinking,
     commercial awareness, stakeholder judgment, negotiation mindset, and clarity & persuasion.
     """
-    logger.info(f"Evaluating sales conversation for session {session_id}")
     
     try:
         # Fetch session from database
@@ -4210,7 +4170,6 @@ async def upload_to_blob_storage(file: UploadFile, user_id: str) -> tuple[str, s
         content_settings=ContentSettings(content_type=file.content_type)
     )
     duration = time.perf_counter() - start
-    logger.info(f"Azure chunked upload time: {duration:.2f} seconds")
 
     return blob_client.url, blob_name
 
@@ -4265,7 +4224,6 @@ async def upload_video(
     Upload a video file to Azure Blob Storage and store the URL in the database.
     Also updates the user's resume profile with the video URL.
     """
-    logger.info(f"Received video upload request for user: {user_id}")
     
     # Validate file type
     validate_video_file(file)
@@ -4364,7 +4322,6 @@ async def upload_audio(
     Upload an audio file to Azure Blob Storage and store the URL in the database.
     Also updates the user's resume profile with the audio URL.
     """
-    logger.info(f"Received audio upload request for user: {user_id}")
     
     # Validate file type
     validate_audio_file(file)
@@ -4478,8 +4435,6 @@ async def search_profiles(
     - page: Page number (default: 1)
     - page_size: Number of items per page (default: 10, max: 100)
     """
-    logger.info(f"Received profile search request (exact={exact}, job_id={search_request.job_id}, page={page}, page_size={page_size})")
-    
     try:
         collection = db["resume_profiles"]
         interview_collection = db["interview_sessions"]
@@ -5056,7 +5011,6 @@ async def company_signup(profile: CompanyProfile):
     Register a new company profile in the database.
     Returns the company ID upon successful creation.
     """
-    logger.info(f"Received company signup request for: {profile.company_name}")
     
     try:
         # Add creation timestamp
@@ -5127,8 +5081,6 @@ async def add_job_role(role: JobRole):
     Add a new job role for a company.
     Returns the role ID upon successful creation.
     """
-    logger.info(f"Received job role creation request for company: {role.company_id}")
-    
     try:
         # Validate company exists
         company_collection = db["company_profiles"]
@@ -5241,7 +5193,6 @@ async def get_all_jobs(
     Get all active jobs (new format only) with hiring manager details.
     Does not use company_profiles. Uses hiring_managers collection instead.
     """
-    logger.info(f"Fetching all NEW FORMAT jobs (page {page}, size {page_size})")
 
     try:
         job_collection = db["job_roles"]
@@ -5271,8 +5222,6 @@ async def get_all_jobs(
 
         # Fetch jobs
         jobs = await job_collection.find(filter_conditions).sort("created_at", -1).skip(skip).limit(page_size).to_list(length=page_size)
-        logger.info(f"Found {len(jobs)} jobs after pagination")
-
         jobs_with_manager = []
         DEFAULT_CONFIG = {
     "rounds": [
@@ -5726,8 +5675,6 @@ async def company_login(login_request: CompanyLoginRequest):
     Authenticate a company using email and password.
     Returns company details upon successful login.
     """
-    logger.info(f"Received company login request for email: {login_request.email}")
-    
     try:
         # Find company by email
         collection = db["company_profiles"]
@@ -6110,7 +6057,6 @@ async def async_search_azure(query: str, job_id: str) -> list[dict]:
     try:
         async with aiohttp.ClientSession() as session:
             async with session.post(search_url, headers=headers, json=search_body) as response:
-                logger.info(f"Azure Search response status: {response}")
                 if response.status == 200:
                     result = await response.json()
                     return result.get("value", [])
@@ -6127,7 +6073,6 @@ async def ask_job_question_async(query: Query):
     try:
         # Fully async Azure Search
         search_results = await async_search_azure(query.question, query.job_id)
-        logger.info(f"Search results: {search_results}")
         if not search_results:
             raise HTTPException(status_code=404, detail="Job not found")
 
@@ -6237,7 +6182,6 @@ No explanation. No markdown. No extra text.
                 raise HTTPException(status_code=500, detail="Invalid response format from LLM")
 
 async def gen_interview_questions(profile_id: str, posting_title: str) -> List[str]:
-    logger.info(f"Generating interview questions for {posting_title} based on candidate summary")
 
     # Fetch resume profile from database
     collection = db["resume_profiles"]
@@ -6546,8 +6490,6 @@ Areas for Improvement: {', '.join(improvement_areas) or 'None mentioned'}
 
 
 async def generate_video_highlights(user_id: str) -> str:
-    logger.info(f"Starting candidate summary update from video for user_id: {user_id}")
-    
     collection = db["resume_profiles"]
     video_collection = db["interview_sessions"]
 
@@ -6595,21 +6537,16 @@ video interview :{evaluation_summary}
                     "max_tokens": 250
                 }
             ) as response:
-                logger.info(f"Azure OpenAI API called for user_id: {user_id}, status: {response.status}")
-                
                 if response.status != 200:
                     logger.error(f"Azure OpenAI API failed with status {response.status}")
                     raise HTTPException(status_code=500, detail="LLM call failed")
 
                 result = await response.json()
                 summary = result["choices"][0]["message"]["content"].strip()
-                logger.info(f"Generated summary for user_id {user_id}: {summary}")
-
                 await collection.update_one(
                     {"_id": ObjectId(user_id)},
                     {"$set": {"short_summary": summary}}
                 )
-                logger.info(f"Updated short_summary in DB for user_id: {user_id}")
                 return summary
 
     except Exception as e:
@@ -6618,8 +6555,6 @@ video interview :{evaluation_summary}
 
 
 async def update_candidate_summary_from_video(user_id: str) -> str:
-    logger.info(f"Starting candidate summary update from video for user_id: {user_id}")
-    
     collection = db["resume_profiles"]
     video_collection = db["interview_sessions"]
 
@@ -6667,21 +6602,16 @@ video interview :{evaluation_summary}
                     "max_tokens": 250
                 }
             ) as response:
-                logger.info(f"Azure OpenAI API called for user_id: {user_id}, status: {response.status}")
-                
                 if response.status != 200:
                     logger.error(f"Azure OpenAI API failed with status {response.status}")
                     raise HTTPException(status_code=500, detail="LLM call failed")
 
                 result = await response.json()
                 summary = result["choices"][0]["message"]["content"].strip()
-                logger.info(f"Generated summary for user_id {user_id}: {summary}")
-
                 await collection.update_one(
                     {"_id": ObjectId(user_id)},
                     {"$set": {"short_summary": summary}}
                 )
-                logger.info(f"Updated short_summary in DB for user_id: {user_id}")
                 return summary
 
     except Exception as e:
@@ -6734,8 +6664,6 @@ async def generate_job_description(input_data: Dict = Body(...)):
     Generate a job description based on structured input data.
     """
     try:
-        logger.info(f"Generating job description with input: {json.dumps(input_data, indent=2)}")
-
         # Pass the raw body dict directly
         jd = await call_openai_for_jd(input_data)
 
@@ -6776,11 +6704,6 @@ async def update_video_proctoring_logs(
             upsert=True
         )
 
-        if result.upserted_id:
-            logger.info(f"Inserted new video proctoring log for user {user_id}")
-        else:
-            logger.info(f"Updated existing video proctoring log for user {user_id}")
-
         return {"status": True, "message": "Video proctoring logs updated successfully."}
     except Exception as e:
         logger.error(f"Error updating video proctoring logs: {e}")
@@ -6804,11 +6727,6 @@ async def update_audio_proctoring_logs(
             {"$set": audio_proctoring_logs},
             upsert=True
         )
-
-        if result.upserted_id:
-            logger.info(f"Inserted new audio proctoring log for user {user_id}")
-        else:
-            logger.info(f"Updated existing audio proctoring log for user {user_id}")
 
         return {"status": True, "message": "audio proctoring logs updated successfully."}
     except Exception as e:
@@ -6885,8 +6803,6 @@ async def start_audio_call(request: AudioInterviewCallRequest):
             return JSONResponse(content={"message": "Candidate phone number not available"}, status_code=200)
 
         call_response = start_audio_interview_call(phone_number, resume_text, candidate_name)
-        logger.info(f"Audio interview call response: {call_response}")
-
         if call_response.get("status") and "call_id" in call_response:
             otp = ''.join(random.choices(string.ascii_uppercase + string.digits, k=5))
             await collection.update_one(
@@ -7090,7 +7006,6 @@ async def hiring_manager_signup(manager: HiringManagerSignup):
     Register a new hiring manager profile in the database.
     Returns the manager ID + tokens upon successful creation.
     """
-    logger.info(f"Received hiring manager signup request for: {manager.email}")
     
     try:
         # Prepare data
@@ -7427,10 +7342,8 @@ async def refresh_access_token(request: RefreshTokenRequest):
             )
 
         user_id = token_doc["user_id"]
-        logger.info(f"Refreshing access token for user_id: {user_id}")
     
         user_type = token_doc["user_type"]
-        logger.info(f"User type from token: {user_type}")
         # Generate a new access token
         new_access_token = create_access_token(user_id=user_id, role=user_type)
 
@@ -8213,8 +8126,6 @@ async def evaluateeeeeee_audio_interview(application_id: str):
                 "evaluation": evaluation_result.dict()
             })
 
-            logger.info(f"Evaluated Q{i}")
-
             if hasattr(evaluation_result, "score"):
                 scores.append(evaluation_result.score)
 
@@ -8664,9 +8575,6 @@ async def parse_candidate_resume(
             return current_user  # return token error as JSON
 
         user_id = current_user["user_id"]
-
-        logger.info(f"Received resume parsing request from user {user_id} for file: {file.filename}")
-
         # Read file content
         content = await file.read()
         if not content:
@@ -8683,8 +8591,6 @@ async def parse_candidate_resume(
                 file=io.BytesIO(content)
             )
             resume_url, _ = await upload_to_blob_storage_resume(file_for_blob, "resume")
-            logger.info(f"Resume uploaded to blob: {resume_url}")
-
         # Extract text (PyPDF → fallback OCR)
         text = ""
         try:
@@ -8692,7 +8598,6 @@ async def parse_candidate_resume(
                 UploadFile(filename=file.filename, file=io.BytesIO(content))
             )
             if not text:
-                logger.info("PyPDF returned empty text, falling back to OCR")
                 text = await extract_text_with_ocr(
                     UploadFile(filename=file.filename, file=io.BytesIO(content))
                 )
@@ -8708,7 +8613,6 @@ async def parse_candidate_resume(
             upsert=False
         )
 
-        logger.info(f"Updated resume for user {user_id}")
         parsed_data = await parse_resume_with_azure(text)
         return JSONResponse(
             status_code=200,
@@ -9229,7 +9133,6 @@ async def evaluate_interview(
     Evaluate interview Q&A pairs and provide detailed feedback.
     Also updates the audio interview status in the database based on average score.
     """
-    logger.info("Received interview evaluation request")
     try:
         # ✅ Verify JWT
         try:
@@ -9285,7 +9188,6 @@ async def evaluate_interview(
                 "answer": qa_pair.answer,
                 "evaluation": evaluation_result.dict()
             })
-            logger.info(f"Evaluated Q{i}")
 
             if hasattr(evaluation_result, "score"):
                 scores.append(evaluation_result.score)
@@ -9481,7 +9383,6 @@ async def conversational_interview(
             content={"status": False, "message": "Job ID not found in application"}
         )
         invite_status= user_profile.get("video_email_sent", False)
-        logger.info(f"Video interview invite status: {invite_status}")
         if not invite_status:
             return JSONResponse(
             status_code=200,
@@ -9900,7 +9801,6 @@ async def call_llm(messages: list[dict]):
             if response.status != 200:
                 raise HTTPException(status_code=500, detail=f"LLM error {response.status}")
             result = await response.json()
-            logger.info(f"LLM response: {result}")
             return result["choices"][0]["message"]["content"].strip()
 async def needs_probing(question: str, answer: str) -> bool:
     probe_prompt = f"""
@@ -10018,7 +9918,6 @@ def get_sales_probe(current_q_index: int) -> str:
 
 async def evaluate_sales_answer(question: str, answer: str, i: int) -> AnswerEvaluation:
     """Evaluate answer for sales interview."""
-    logger.info(f"Evaluating sales answer for question: {question[:100]}...")
 
     prompt = f"""
 Evaluate the following interview Q&A based on the scoring framework for the given question number, and return a JSON response.
@@ -10127,7 +10026,6 @@ Only return a valid JSON object. Do not include any markdown or explanations.
                             raise ValueError(f"Missing required field: {field}")
 
                     evaluation["score"] = max(0, min(100, evaluation["score"]))
-                    logger.info("Successfully evaluated sales answer")
                     return AnswerEvaluation(**evaluation)
 
                 except (KeyError, json.JSONDecodeError, ValueError) as e:
@@ -10221,8 +10119,6 @@ def get_presales_probe(current_q_index: int) -> str:
 
 async def evaluate_presales_answer(question: str, answer: str, i: int) -> AnswerEvaluation:
     """Evaluate answer for pre-sales interview."""
-    logger.info(f"Evaluating presales answer for question: {question[:100]}...")
-
     prompt = f"""
 Evaluate the following interview Q&A based on the scoring framework for the given question number, and return a JSON response.
 
@@ -10330,7 +10226,6 @@ Only return a valid JSON object. Do not include any markdown or explanations.
                             raise ValueError(f"Missing required field: {field}")
 
                     evaluation["score"] = max(0, min(100, evaluation["score"]))
-                    logger.info("Successfully evaluated presales answer")
                     return AnswerEvaluation(**evaluation)
 
                 except (KeyError, json.JSONDecodeError, ValueError) as e:
@@ -10421,7 +10316,6 @@ async def audio_interview(
 
         # Determine interview type
         audio_round_type = job_role.get("audio_round_type", "default")
-        logger.info(f"Audio round type for job {job_id}: {audio_round_type}")
         interview_type = "pre_sales" if audio_round_type == "pre_sales" else "default"
 
         # Find session
@@ -10528,7 +10422,6 @@ async def audio_interview(
                     {"$set": {"audio_interview": True}}
                 )
                 temp = await evaluate_audio_interview(request.application_id)
-                logger.info(f"Audio interview evaluated: {temp}")
                 return {"status": True, "message": "Interview completed", "done": True, "stage": "done"}
 
         # Normal Q answer (not probing)
@@ -10568,7 +10461,6 @@ async def audio_interview(
             {"$set": {"audio_interview": True}}
         )
         temp = await evaluate_audio_interview(request.application_id)
-        logger.info(f"Audio interview evaluated: {temp}")
         return {"status": True, "message": "Interview completed", "done": True, "stage": "done"}
 
     except Exception as e:
@@ -10631,9 +10523,6 @@ async def evaluate_audio_interview(application_id: str):
                 "answer": answer,
                 "evaluation": evaluation_result.dict()
             })
-
-            logger.info(f"Evaluated Q{i}")
-
             if hasattr(evaluation_result, "score"):
                 scores.append(evaluation_result.score)
 
@@ -10892,7 +10781,6 @@ async def reset_password(
             {"$set": {"otp": otp, "otp_created_at": datetime.utcnow()}}
         )
         temp= await send_password_reset_email(email, otp, user_name)
-        logger.info(f"Password reset email sent: {temp}")
         return {
             "status": True,
             "message": "Password reset email sent"
@@ -10918,8 +10806,6 @@ async def hiring_manager_signup(admin:AdminSignup):
     Register a new hiring manager profile in the database.
     Returns the manager ID + tokens upon successful creation.
     """
-    logger.info(f"Received hiring manager signup request for: {admin.email}")
-    
     try:
         # Prepare data
         admin_dict = admin.dict()
@@ -11051,7 +10937,6 @@ async def reset_password(
             {"$set": {"otp": otp, "otp_created_at": datetime.utcnow()}}
         )
         temp= await send_password_reset_email(email, otp, user_name)
-        logger.info(f"Password reset email sent: {temp}")
         return {
             "status": True,
             "message": "Password reset email sent"
@@ -11441,7 +11326,6 @@ async def get_job_candidates(
             else:
                 filter_conditions["call_for_interview"] = False
         # Log the filter conditions for debugging
-        logger.info(f"Filter conditions: {filter_conditions}")
         
         # Get total count of candidates with filters
         total_candidates = await profile_collection.count_documents(filter_conditions)
@@ -11462,9 +11346,6 @@ async def get_job_candidates(
         { "application_status": "SendVideoLink" }
     ]
 })
-
-        logger.info(f"Total candidates found: {total_candidates}")
-        
         # Calculate total pages
         total_pages = (total_candidates + page_size - 1) // page_size
         
@@ -11479,8 +11360,6 @@ async def get_job_candidates(
         profiles = await profile_collection.find(
             filter_conditions
         ).sort("created_at", -1).skip(skip).limit(page_size).to_list(length=page_size)
-        
-        logger.info(f"Found {len(profiles)} profiles after pagination")
         
         # Process each profile to add interview details
         candidates = []
@@ -11639,8 +11518,6 @@ async def get_job_candidates(
             },
             "candidates": candidates
         }
-        
-        logger.info(f"Response prepared with {len(candidates)} candidates")
         return response
         
     except HTTPException as he:
@@ -11866,10 +11743,8 @@ async def update_profile(payload: UpdateProfileRequest, authorization: str = Hea
                 status_code=401
             )
         user_id=current_user["user_id"]
-        logger.info(f"Updating profile for user_id: {user_id}")
         # Determine collection name
         role = current_user["role"]
-        logger.info(f"User role: {role}")
         if role == "candidate":
             collection = db["user_accounts"]
         elif role == "manager":
@@ -12008,8 +11883,6 @@ async def get_contacts_csv(
         else:
             # Default: get all candidates for the given job
             filter_conditions = {"job_id": job_id}
-
-        logger.info(f"Contacts CSV filters: {filter_conditions}")
 
         # --- Aggregation pipeline ---
         pipeline = [
@@ -12222,7 +12095,6 @@ async def create_event_endpoint(req: EventRequest, authorization: str = Header(N
             )
         
         organizer_email = user_record["email"]
-        logger.info(f"Organizer email: {organizer_email}")
         summary = "Reminder to take your video interview"
         description= "login in to https://thescooter.ai/candidate/login"
         # Parse start_time and calculate end_time (30 mins later)
