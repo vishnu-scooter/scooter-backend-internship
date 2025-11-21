@@ -32,3 +32,22 @@
 2025-10-06 19:38:18,185 - __main__ - INFO - Starting FastAPI application
 2025-10-06 19:40:29,462 - __main__ - INFO - application startup good
 2025-10-06 19:40:34,859 - __main__ - INFO - Starting FastAPI application
+2025-11-20 23:22:07,377 - __main__ - INFO - application startup good
+2025-11-20 23:22:07,383 - fastapi - ERROR - Form data requires "python-multipart" to be installed. 
+You can install "python-multipart" with: 
+
+pip install python-multipart
+
+2025-11-20 23:22:38,422 - __main__ - INFO - application startup good
+2025-11-20 23:22:41,226 - __main__ - INFO - application startup good
+2025-11-20 23:23:37,548 - __main__ - INFO - application startup good
+2025-11-20 23:25:15,713 - __main__ - INFO - application startup good
+2025-11-20 23:27:58,406 - __main__ - INFO - application startup good
+2025-11-20 23:27:58,620 - __main__ - INFO - Starting FastAPI application
+2025-11-20 23:41:03,288 - __main__ - INFO - application startup good
+2025-11-20 23:41:03,571 - __main__ - INFO - Starting FastAPI application
+2025-11-21 06:51:56,518 - __main__ - INFO - application startup good
+2025-11-21 06:51:56,768 - __main__ - INFO - Starting FastAPI application
+2025-11-21 10:01:11,036 - __main__ - INFO - Starting FastAPI application
+2025-11-21 16:27:47,255 - __main__ - INFO - Starting FastAPI application
+2025-11-21 16:31:25,369 - __main__ - INFO - Starting FastAPI application
